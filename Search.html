@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Google Earth Places Search</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+        header {
+            background: linear-gradient(90deg, #1a73e8, #4CAF50);
+            color: white;
+            padding: 40px 30px;
+            text-align: center;
+        }
+        h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+        }
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 2fr;
+            gap: 30px;
+            padding: 30px;
+            min-height: 500px;
+        }
+        @media (max-width: 768px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+        }
+        .search-box {
+            width: 100%;
+            padding: 15px;
+            font-size: 18px;
+            border: 3px solid #1a73e8;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+        .place-card {
+            background: #f8f9fa;
+            padding: 20px;
+            margin: 15px 0;
+            border-radius: 10px;
+            border-left: 5px solid #4CAF50;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .place-card:hover {
+            transform: translateX(10px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        .place-name {
+            font-weight: bold;
+            color: #2c3e50;
+            font-size: 18px;
+            margin-bottom: 8px;
+        }
+        .earth-btn {
+            display: inline-block;
+            background: #34a853;
+            color: white;
+            padding: 8px 15px;
+            border-radius: 5px;
+            text-decoration: none;
+            margin-top: 10px;
+            font-weight: bold;
+        }
+        .stats {
+            background: #e8f0fe;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+        .instructions {
+            background: #fff3cd;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>
+                <span>🌍</span>
+                Google Earth Places Search
+                <span>🔍</span>
+            </h1>
+            <p style="opacity: 0.9;">Search and navigate your KML places online</p>
+        </header>
+        
+        <div class="main-content">
+            <div>
+                <div class="instructions">
+                    <h3>📋 How to Use</h3>
+                    <ol style="margin-top: 10px; padding-left: 20px;">
+                        <li>Your KML file is automatically loaded</li>
+                        <li>Search places by name or description</li>
+                        <li>Click any place to view details</li>
+                        <li>Click "Open in Google Earth" to navigate</li>
+                    </ol>
+                </div>
+                
+                <div class="stats">
+                    <h3>📊 Statistics</h3>
+                    <p id="place-count">Loading places...</p>
+                    <p id="file-info"></p>
+                </div>
+                
+                <div style="margin-top: 20px;">
+                    <h3>🔗 Share This Page</h3>
+                    <input type="text" id="share-url" readonly style="width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ddd; border-radius: 5px;">
+                    <button onclick="copyShareUrl()" style="background: #1a73e8; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer;">
+                        📋 Copy Link
+                    </button>
+                </div>
+            </div>
+            
+            <div>
+                <input type="text" id="searchInput" class="search-box" placeholder="Search places...">
+                
+                <div id="searchResults">
+                    <div class="loading">
+                        <div style="width: 50px; height: 50px; border: 5px solid #f3f3f3; border-top: 5px solid #1a73e8; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 20px;"></div>
+                        <h3>Loading your places...</h3>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <footer style="text-align: center; padding: 20px; background: #f8f9fa; color: #666;">
+            <p>Created with ❤️ using GitHub Pages | KML file: <span id="kml-filename">Loading...</span></p>
+        </footer>
+    </div>
+
+    <script>
+        // Configuration - CHANGE THIS TO YOUR KML FILENAME
+        const KML_FILE_NAME = 'my-places.kml'; // ← Change this to your actual KML filename
+        
+        // Global variables
+        let allPlaces = [];
+        let kmlData = {};
+        
+        // Load KML file on page load
+        document.addEventListener('DOMContentLoaded', async function() {
+            console.log('Loading KML file:', KML_FILE_NAME);
+            
+            try {
+                // Load the KML file
+                const response = await fetch(KML_FILE_NAME);
+                
+                if (!response.ok) {
+                    throw new Error(`Failed to load KML file: ${response.status}`);
+                }
+                
+                const kmlText = await response.text();
+                kmlData = await parseKML(kmlText);
+                allPlaces = kmlData.places;
+                
+                // Update UI
+                updateStatistics();
+                renderPlaces(allPlaces);
+                setupSearch();
+                updateShareUrl();
+                
+            } catch (error) {
+                console.error('Error loading KML:', error);
+                document.getElementById('searchResults').innerHTML = `
+                    <div class="instructions" style="background: #f8d7da; color: #721c24;">
+                        <h3>❌ Error Loading KML File</h3>
+                        <p>Error: ${error.message}</p>
+                        <p>Make sure:</p>
+                        <ol>
+                            <li>The file <strong>"${KML_FILE_NAME}"</strong> exists in the same folder</li>
+                            <li>The filename is spelled correctly</li>
+                            <li>The file is accessible (not private)</li>
+                        </ol>
+                        <p>Current file being loaded: <code>${KML_FILE_NAME}</code></p>
+                    </div>
+                `;
+            }
+        });
+        
+        // Parse KML data
+        async function parseKML(kmlText) {
+            const parser = new DOMParser();
+            const xmlDoc = parser.parseFromString(kmlText, 'text/xml');
+            
+            // Extract places
+            const placemarks = xmlDoc.getElementsByTagName('Placemark');
+            const places = [];
+            
+            for (let i = 0; i < placemarks.length; i++) {
+                const placemark = placemarks[i];
+                
+                // Extract name
+                const nameElement = placemark.getElementsByTagName('name')[0];
+                const name = nameElement ? nameElement.textContent.trim() : `Place ${i + 1}`;
+                
+                // Extract description
+                let description = '';
+                const descElement = placemark.getElementsByTagName('description')[0];
+                if (descElement) {
+                    description = descElement.textContent.trim();
+                    // Remove HTML tags
+                    description = description.replace(/<[^>]*>/g, '');
+                }
+                
+                // Extract coordinates
+                let coordinates = '';
+                let lat = '', lon = '';
+                const coordElement = placemark.getElementsByTagName('coordinates')[0];
+                if (coordElement) {
+                    coordinates = coordElement.textContent.trim();
+                    const parts = coordinates.split(',');
+                    if (parts.length >= 2) {
+                        lon = parseFloat(parts[0]).toFixed(6);
+                        lat = parseFloat(parts[1]).toFixed(6);
+                    }
+                }
+                
+                // Create Google Earth URL
+                const earthUrl = lat && lon ? 
+                    `https://earth.google.com/web/@${lat},${lon},1000a,10000d,35y,0h,0t,0r` :
+                    `https://earth.google.com/web/search/${encodeURIComponent(name)}`;
+                
+                places.push({
+                    id: i + 1,
+                    name: name,
+                    description: description,
+                    coordinates: coordinates,
+                    latitude: lat,
+                    longitude: lon,
+                    earthUrl: earthUrl,
+                    searchable: (name + ' ' + description).toLowerCase()
+                });
+            }
+            
+            // Extract document info
+            const docName = xmlDoc.getElementsByTagName('name')[0]?.textContent || 'Google Earth Project';
+            const docDesc = xmlDoc.getElementsByTagName('description')[0]?.textContent || '';
+            
+            return {
+                name: docName,
+                description: docDesc,
+                places: places,
+                totalPlaces: places.length
+            };
+        }
+        
+        // Update statistics
+        function updateStatistics() {
+            document.getElementById('place-count').textContent = 
+                `Total Places: ${allPlaces.length}`;
+            document.getElementById('file-info').textContent = 
+                `Project: ${kmlData.name || 'Untitled'}`;
+            document.getElementById('kml-filename').textContent = KML_FILE_NAME;
+        }
+        
+        // Render places
+        function renderPlaces(places) {
+            const container = document.getElementById('searchResults');
+            
+            if (places.length === 0) {
+                container.innerHTML = `
+                    <div class="instructions">
+                        <h3>No places found</h3>
+                        <p>Your KML file might be empty or in a different format.</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            let html = '';
+            places.forEach(place => {
+                html += `
+                    <div class="place-card" onclick="openInEarth('${place.earthUrl}')">
+                        <div class="place-name">${escapeHtml(place.name)}</div>
+                        ${place.description ? `<p style="color: #666; margin: 10px 0;">${escapeHtml(place.description.substring(0, 150))}${place.description.length > 150 ? '...' : ''}</p>` : ''}
+                        ${place.latitude ? `
+                            <div style="margin: 10px 0;">
+                                <span style="background: #2c3e50; color: white; padding: 4px 8px; border-radius: 4px; font-size: 12px;">
+                                    📍 ${place.latitude}, ${place.longitude}
+                                </span>
+                            </div>
+                        ` : ''}
+                        <a href="${place.earthUrl}" target="_blank" class="earth-btn" onclick="event.stopPropagation()">
+                            🌍 Open in Google Earth
+                        </a>
+                    </div>
+                `;
+            });
+            
+            container.innerHTML = html;
+        }
+        
+        // Setup search functionality
+        function setupSearch() {
+            const searchInput = document.getElementById('searchInput');
+            searchInput.disabled = false;
+            searchInput.placeholder = `Search ${allPlaces.length} places...`;
+            searchInput.focus();
+            
+            searchInput.addEventListener('input', function() {
+                const query = this.value.toLowerCase().trim();
+                
+                if (!query) {
+                    renderPlaces(allPlaces);
+                    return;
+                }
+                
+                const filtered = allPlaces.filter(place => 
+                    place.searchable.includes(query)
+                );
+                
+                renderPlaces(filtered);
+            });
+        }
+        
+        // Open in Google Earth
+        function openInEarth(url) {
+            window.open(url, '_blank');
+        }
+        
+        // Update share URL
+        function updateShareUrl() {
+            const currentUrl = window.location.href;
+            document.getElementById('share-url').value = currentUrl;
+        }
+        
+        // Copy share URL
+        function copyShareUrl() {
+            const shareInput = document.getElementById('share-url');
+            shareInput.select();
+            shareInput.setSelectionRange(0, 99999);
+            
+            navigator.clipboard.writeText(shareInput.value).then(() => {
+                alert('Link copied to clipboard! Share it with others.');
+            });
+        }
+        
+        // Escape HTML
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
+        // Add CSS animation
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes spin {
+                0% { transform: rotate(0deg); }
+                100% { transform: rotate(360deg); }
+            }
+        `;
+        document.head.appendChild(style);
+    </script>
+</body>
+</html>
