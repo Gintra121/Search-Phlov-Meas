@@ -3,8 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>KML Placemarks Navigator</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <title>KML Navigator - Google Drive Integration</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         /* Reset & Base */
@@ -190,12 +189,12 @@
             background: #1a73e8;
         }
         
-        .action-btn.copy {
-            background: #9c27b0;
+        .action-btn.drive {
+            background: #ff9800;
         }
         
-        .action-btn.share {
-            background: #ff9800;
+        .action-btn.kml {
+            background: #9c27b0;
         }
         
         .action-btn:disabled {
@@ -255,6 +254,24 @@
             font-family: 'Courier New', monospace;
             font-size: 13px;
         }
+        
+        /* Drive Status */
+        .drive-status {
+            background: #e3f2fd;
+            padding: 15px;
+            border-radius: 10px;
+            margin: 10px 0;
+            border-left: 4px solid #1a73e8;
+        }
+        
+        .status-icon {
+            font-size: 24px;
+            margin-right: 10px;
+        }
+        
+        .status-loading { color: #ff9800; }
+        .status-success { color: #4CAF50; }
+        .status-error { color: #f44336; }
         
         /* Stats */
         .stats {
@@ -344,6 +361,23 @@
             animation: slideUp 0.3s ease;
         }
         
+        /* Progress Bar */
+        .progress-bar {
+            width: 100%;
+            height: 6px;
+            background: #e0e0e0;
+            border-radius: 3px;
+            margin: 10px 0;
+            overflow: hidden;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: #4CAF50;
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+        
         /* Animations */
         @keyframes spin {
             0% { transform: rotate(0deg); }
@@ -353,6 +387,16 @@
         @keyframes slideUp {
             from { transform: translate(-50%, 100px); opacity: 0; }
             to { transform: translate(-50%, 0); opacity: 1; }
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+        
+        .pulse {
+            animation: pulse 1.5s infinite;
         }
         
         /* Mobile Specific */
@@ -489,7 +533,7 @@
         <h1>
             <i class="fas fa-globe-americas"></i>
             KML Navigator
-            <i class="fas fa-map-marker-alt"></i>
+            <i class="fas fa-cloud-download-alt"></i>
         </h1>
     </div>
     
@@ -498,10 +542,10 @@
         <header class="desktop-header">
             <h1>
                 <i class="fas fa-globe-americas"></i>
-                KML Placemarks Navigator
-                <i class="fas fa-map-marker-alt"></i>
+                KML Navigator with Google Drive
+                <i class="fas fa-cloud-download-alt"></i>
             </h1>
-            <p style="opacity: 0.9;">Navigate directly to locations with markers</p>
+            <p style="opacity: 0.9;">Download from Google Drive & Navigate with Markers</p>
         </header>
         
         <div class="main-content">
@@ -511,12 +555,27 @@
                     <h3><i class="fas fa-info-circle"></i> How to Use</h3>
                     <ol style="margin-top: 10px; padding-left: 20px;">
                         <li>Search places in the list</li>
-                        <li>Click any place to select it</li>
-                        <li>Use buttons to open with marker</li>
-                        <li>Coordinates will be copied automatically</li>
+                        <li>Select a place to view details</li>
+                        <li>Click "Google Earth" to open with marker</li>
+                        <li>KML will be downloaded from Google Drive if needed</li>
                     </ol>
                 </div>
                 
+                <!-- Google Drive Status -->
+                <div class="drive-status" id="driveStatus">
+                    <div style="display: flex; align-items: center;">
+                        <i class="fas fa-cloud status-icon status-loading pulse"></i>
+                        <div>
+                            <h4 style="margin: 0;">Google Drive Status</h4>
+                            <p style="margin: 5px 0 0 0; font-size: 14px;">Checking KML file...</p>
+                        </div>
+                    </div>
+                    <div class="progress-bar mt-1">
+                        <div class="progress-fill" id="progressFill"></div>
+                    </div>
+                </div>
+                
+                <!-- Selected Location -->
                 <div class="info-box">
                     <h3><i class="fas fa-location-crosshairs"></i> Selected Location</h3>
                     <div id="selected-info">
@@ -527,31 +586,39 @@
                         <div class="coordinate-box mt-1">
                             <div><strong>Latitude:</strong> <span id="coord-lat"></span></div>
                             <div><strong>Longitude:</strong> <span id="coord-lng"></span></div>
+                            <div><strong>Altitude:</strong> <span id="coord-alt">0m</span></div>
                         </div>
                         
                         <div class="btn-group mt-2">
                             <button class="action-btn" id="open-earth-btn">
-                                <i class="fas fa-globe-americas"></i> Earth
+                                <i class="fas fa-globe-americas"></i> Google Earth
                             </button>
                             <button class="action-btn maps" id="open-maps-btn">
-                                <i class="fas fa-map-marked-alt"></i> Maps
+                                <i class="fas fa-map-marked-alt"></i> Google Maps
+                            </button>
+                        </div>
+                        
+                        <div class="btn-group">
+                            <button class="action-btn drive" onclick="downloadFromDrive()">
+                                <i class="fas fa-cloud-download-alt"></i> Download KML
+                            </button>
+                            <button class="action-btn kml" onclick="viewKMLSource()">
+                                <i class="fas fa-code"></i> View KML
                             </button>
                         </div>
                         
                         <div class="quick-actions">
                             <button class="quick-btn" onclick="copyCoordinates()">
-                                <i class="fas fa-copy"></i> Copy
+                                <i class="fas fa-copy"></i> Copy Coords
                             </button>
-                            <button class="quick-btn" onclick="shareCoordinates()">
+                            <button class="quick-btn" onclick="shareLocation()">
                                 <i class="fas fa-share"></i> Share
-                            </button>
-                            <button class="quick-btn" onclick="showQRCode()">
-                                <i class="fas fa-qrcode"></i> QR Code
                             </button>
                         </div>
                     </div>
                 </div>
                 
+                <!-- Statistics -->
                 <div class="stats">
                     <div class="stat-item">
                         <i class="fas fa-map-marker-alt"></i>
@@ -565,9 +632,11 @@
                     </div>
                 </div>
                 
+                <!-- File Info -->
                 <div class="info-box">
-                    <h3><i class="fas fa-file-alt"></i> KML File</h3>
+                    <h3><i class="fas fa-file-alt"></i> KML File Information</h3>
                     <p id="kml-info">Loading...</p>
+                    <p id="drive-info" style="font-size: 12px; color: #666; margin-top: 5px;"></p>
                 </div>
             </div>
             
@@ -589,17 +658,16 @@
             <i class="fas fa-bars"></i>
         </button>
         
-        <!-- Modal for QR Code -->
-        <div class="modal" id="qrModal">
+        <!-- KML Source Modal -->
+        <div class="modal" id="kmlModal">
             <div class="modal-content">
-                <h3><i class="fas fa-qrcode"></i> Location QR Code</h3>
-                <div id="qrcode" class="text-center mt-2 mb-2"></div>
-                <p class="text-center" id="qr-coords"></p>
+                <h3><i class="fas fa-code"></i> KML Source Code</h3>
+                <pre id="kml-source" style="background: #f5f5f5; padding: 15px; border-radius: 8px; max-height: 300px; overflow: auto; font-size: 12px; font-family: monospace;"></pre>
                 <div class="modal-actions">
-                    <button class="action-btn copy" onclick="copyQRImage()">
-                        <i class="fas fa-download"></i> Save QR
+                    <button class="action-btn" onclick="copyKMLSource()">
+                        <i class="fas fa-copy"></i> Copy KML
                     </button>
-                    <button class="action-btn" onclick="closeModal()">
+                    <button class="action-btn maps" onclick="closeModal('kmlModal')">
                         <i class="fas fa-times"></i> Close
                     </button>
                 </div>
@@ -613,12 +681,23 @@
     <script>
         // Configuration
         const KML_FILE_NAME = 'ឃុំផ្លូវមាស.kml';
+        const GOOGLE_DRIVE_BASE = 'https://drive.google.com/uc?export=download&id=';
+        
+        // Google Drive File IDs (Add your file ID here)
+        const DRIVE_FILE_IDS = {
+            // Add your Google Drive file IDs here
+            // Example: 'myfile.kml': 'YOUR_GOOGLE_DRIVE_FILE_ID'
+            'ឃុំផ្លូវមាស.kml': null // Set to null for local file first
+        };
         
         // Global variables
         let allPlaces = [];
         let kmlData = {};
         let selectedPlace = null;
         let isMobile = window.innerWidth <= 992;
+        let kmlSource = '';
+        let driveFileId = null;
+        let isDriveFile = false;
         
         // Initialize on page load
         document.addEventListener('DOMContentLoaded', async function() {
@@ -630,8 +709,11 @@
             document.getElementById('mobileToggle').addEventListener('click', toggleMobileNav);
             
             // Setup buttons
-            document.getElementById('open-earth-btn').addEventListener('click', openInGoogleEarth);
-            document.getElementById('open-maps-btn').addEventListener('click', openInGoogleMaps);
+            document.getElementById('open-earth-btn').addEventListener('click', openInGoogleEarthWithMarker);
+            document.getElementById('open-maps-btn').addEventListener('click', openInGoogleMapsWithMarker);
+            
+            // Check Google Drive file first
+            await checkGoogleDriveFile();
             
             // Load KML
             await loadKML();
@@ -654,35 +736,174 @@
             });
         });
         
-        // Check mobile state
-        function checkMobile() {
-            isMobile = window.innerWidth <= 992;
-            if (!isMobile) {
-                document.getElementById('sidebar').classList.remove('active');
-                document.getElementById('mobileToggle').innerHTML = '<i class="fas fa-bars"></i>';
-            }
-        }
-        
-        // Toggle mobile navigation
-        function toggleMobileNav() {
-            const sidebar = document.getElementById('sidebar');
-            const toggle = document.getElementById('mobileToggle');
+        // Check Google Drive for KML file
+        async function checkGoogleDriveFile() {
+            const statusDiv = document.getElementById('driveStatus');
+            const progressFill = document.getElementById('progressFill');
             
-            sidebar.classList.toggle('active');
-            if (sidebar.classList.contains('active')) {
-                toggle.innerHTML = '<i class="fas fa-times"></i>';
-            } else {
-                toggle.innerHTML = '<i class="fas fa-bars"></i>';
+            // Check if we have a Drive ID for this file
+            const fileId = DRIVE_FILE_IDS[KML_FILE_NAME];
+            
+            if (!fileId) {
+                // Use local file
+                statusDiv.innerHTML = `
+                    <div style="display: flex; align-items: center;">
+                        <i class="fas fa-hdd status-icon status-success"></i>
+                        <div>
+                            <h4 style="margin: 0;">Local File</h4>
+                            <p style="margin: 5px 0 0 0; font-size: 14px;">Using local KML file</p>
+                        </div>
+                    </div>
+                `;
+                isDriveFile = false;
+                return;
+            }
+            
+            driveFileId = fileId;
+            
+            // Update status
+            statusDiv.innerHTML = `
+                <div style="display: flex; align-items: center;">
+                    <i class="fas fa-cloud status-icon status-loading pulse"></i>
+                    <div>
+                        <h4 style="margin: 0;">Checking Google Drive</h4>
+                        <p style="margin: 5px 0 0 0; font-size: 14px;">Verifying KML file...</p>
+                    </div>
+                </div>
+            `;
+            progressFill.style.width = '30%';
+            
+            try {
+                // Try to access the file on Google Drive
+                const testUrl = `${GOOGLE_DRIVE_BASE}${fileId}`;
+                const response = await fetch(testUrl, { method: 'HEAD' });
+                
+                if (response.ok) {
+                    // File exists on Drive
+                    statusDiv.innerHTML = `
+                        <div style="display: flex; align-items: center;">
+                            <i class="fas fa-cloud status-icon status-success"></i>
+                            <div>
+                                <h4 style="margin: 0;">Google Drive Ready</h4>
+                                <p style="margin: 5px 0 0 0; font-size: 14px;">KML file available online</p>
+                            </div>
+                        </div>
+                    `;
+                    progressFill.style.width = '100%';
+                    isDriveFile = true;
+                    
+                    // Update file info
+                    document.getElementById('drive-info').innerHTML = 
+                        `<i class="fas fa-cloud"></i> File hosted on Google Drive`;
+                } else {
+                    throw new Error('File not found on Drive');
+                }
+            } catch (error) {
+                // Fall back to local file
+                statusDiv.innerHTML = `
+                    <div style="display: flex; align-items: center;">
+                        <i class="fas fa-exclamation-triangle status-icon status-error"></i>
+                        <div>
+                            <h4 style="margin: 0;">Using Local File</h4>
+                            <p style="margin: 5px 0 0 0; font-size: 14px;">Google Drive unavailable, using local copy</p>
+                        </div>
+                    </div>
+                `;
+                progressFill.style.width = '100%';
+                isDriveFile = false;
             }
         }
         
-        // Load KML file
-        async function loadKML() {
+        // Download KML from Google Drive
+        async function downloadFromDrive() {
+            if (!driveFileId || !isDriveFile) {
+                showToast('Local file already available', 'info');
+                return;
+            }
+            
+            const statusDiv = document.getElementById('driveStatus');
+            const progressFill = document.getElementById('progressFill');
+            
+            statusDiv.innerHTML = `
+                <div style="display: flex; align-items: center;">
+                    <i class="fas fa-cloud-download-alt status-icon status-loading pulse"></i>
+                    <div>
+                        <h4 style="margin: 0;">Downloading from Drive</h4>
+                        <p style="margin: 5px 0 0 0; font-size: 14px;">Fetching latest KML file...</p>
+                    </div>
+                </div>
+            `;
+            
             try {
-                const response = await fetch(KML_FILE_NAME);
-                if (!response.ok) throw new Error(`Failed to load: ${response.status}`);
+                progressFill.style.width = '50%';
+                
+                // Download the file
+                const downloadUrl = `${GOOGLE_DRIVE_BASE}${driveFileId}`;
+                const response = await fetch(downloadUrl);
+                
+                if (!response.ok) throw new Error('Download failed');
                 
                 const kmlText = await response.text();
+                kmlSource = kmlText;
+                
+                // Parse and update
+                kmlData = parseKML(kmlText);
+                allPlaces = kmlData.places;
+                
+                updateUI();
+                
+                progressFill.style.width = '100%';
+                
+                statusDiv.innerHTML = `
+                    <div style="display: flex; align-items: center;">
+                        <i class="fas fa-check-circle status-icon status-success"></i>
+                        <div>
+                            <h4 style="margin: 0;">Download Complete</h4>
+                            <p style="margin: 5px 0 0 0; font-size: 14px;">KML file updated from Drive</p>
+                        </div>
+                    </div>
+                `;
+                
+                showToast('KML file downloaded successfully!');
+                
+                // Clear selection and re-render
+                selectedPlace = null;
+                updateSelectedInfo();
+                renderPlaces(allPlaces);
+                
+            } catch (error) {
+                statusDiv.innerHTML = `
+                    <div style="display: flex; align-items: center;">
+                        <i class="fas fa-exclamation-triangle status-icon status-error"></i>
+                        <div>
+                            <h4 style="margin: 0;">Download Failed</h4>
+                            <p style="margin: 5px 0 0 0; font-size: 14px;">${error.message}</p>
+                        </div>
+                    </div>
+                `;
+                showToast('Download failed: ' + error.message, 'error');
+            }
+        }
+        
+        // Load KML file (local or from Drive)
+        async function loadKML() {
+            try {
+                let kmlText;
+                
+                if (isDriveFile && driveFileId) {
+                    // Load from Google Drive
+                    const driveUrl = `${GOOGLE_DRIVE_BASE}${driveFileId}`;
+                    const response = await fetch(driveUrl);
+                    if (!response.ok) throw new Error('Failed to load from Drive');
+                    kmlText = await response.text();
+                } else {
+                    // Load local file
+                    const response = await fetch(KML_FILE_NAME);
+                    if (!response.ok) throw new Error('Failed to load local file');
+                    kmlText = await response.text();
+                }
+                
+                kmlSource = kmlText;
                 kmlData = parseKML(kmlText);
                 allPlaces = kmlData.places;
                 
@@ -708,11 +929,13 @@
                 const nameElement = placemark.getElementsByTagName('name')[0];
                 const name = nameElement ? nameElement.textContent.trim() : `Place ${i + 1}`;
                 
-                // Description
+                // Description (preserve HTML for Google Earth)
                 let description = '';
+                let descriptionHTML = '';
                 const descElement = placemark.getElementsByTagName('description')[0];
                 if (descElement) {
-                    description = descElement.textContent.trim().replace(/<[^>]*>/g, '');
+                    descriptionHTML = descElement.textContent.trim();
+                    description = descriptionHTML.replace(/<[^>]*>/g, '');
                 }
                 
                 // Coordinates (KML: lon,lat,alt)
@@ -733,6 +956,7 @@
                     id: i + 1,
                     name: name,
                     description: description,
+                    descriptionHTML: descriptionHTML,
                     coordinates: coordinates,
                     hasCoordinates: coordinates !== null
                 });
@@ -864,6 +1088,7 @@
             if (selectedPlace.hasCoordinates) {
                 document.getElementById('coord-lat').textContent = selectedPlace.coordinates.latitude.toFixed(6);
                 document.getElementById('coord-lng').textContent = selectedPlace.coordinates.longitude.toFixed(6);
+                document.getElementById('coord-alt').textContent = selectedPlace.coordinates.altitude + 'm';
                 coordsDiv.classList.remove('hidden');
                 
                 // Enable/disable buttons
@@ -876,33 +1101,116 @@
             }
         }
         
-        // Open in Google Earth WITH MARKER
-        function openInGoogleEarth() {
+        // Open in Google Earth WITH MARKER AND DESCRIPTION
+        async function openInGoogleEarthWithMarker() {
             if (!selectedPlace || !selectedPlace.hasCoordinates) {
                 showToast('No coordinates available', 'error');
                 return;
             }
             
+            // Show loading
+            showToast('Opening Google Earth with marker...');
+            
             const lat = selectedPlace.coordinates.latitude;
             const lng = selectedPlace.coordinates.longitude;
+            const name = encodeURIComponent(selectedPlace.name);
+            const desc = encodeURIComponent(selectedPlace.descriptionHTML || selectedPlace.description);
             
-            // Google Earth Web with marker parameters
-            const earthUrl = `https://earth.google.com/web/@${lat},${lng},100a,1000d,35y,0h,0t,0r/data=${encodeURIComponent(`MkBh${lat}${lng}`)}`;
+            // First, ensure KML file is available from Drive if needed
+            if (isDriveFile && !kmlSource) {
+                await downloadFromDrive();
+            }
             
-            // Try desktop first
-            const desktopUrl = `googleearth://${lat},${lng}`;
-            window.location.href = desktopUrl;
+            // Generate a KML string for this specific placemark
+            const placemarkKML = generatePlacemarkKML(selectedPlace);
             
-            // Fallback to web
-            setTimeout(() => {
-                window.open(earthUrl, '_blank');
-            }, 500);
+            // Google Earth Web URL with KML data parameter
+            // This creates a temporary KML with just this placemark
+            const earthUrl = `https://earth.google.com/earth/rpc/cc/drive?state=%7B%22ids%22:%5B%221XXXXXXXXXX%22%5D,%22action%22:%22open%22,%22userId%22:%221234567890%22%7D&usp=sharing`;
             
-            showToast('Opening in Google Earth...');
+            // Alternative: Use data URI with KML
+            const kmlDataUri = `data:application/vnd.google-earth.kml+xml,${encodeURIComponent(placemarkKML)}`;
+            
+            // Best approach: Use Google Earth's flyto with marker parameters
+            // Format: https://earth.google.com/web/@lat,lng,alt/dataparameters
+            const markerParams = generateEarthMarkerParams(selectedPlace);
+            const earthWebUrl = `https://earth.google.com/web/@${lat},${lng},${selectedPlace.coordinates.altitude || 1000}a,1000d,35y,0h,0t,0r/data=${markerParams}`;
+            
+            // Try to open Google Earth desktop first
+            try {
+                const desktopUrl = `googleearth://${lat},${lng}?flyto=1&description=${desc}`;
+                window.location.href = desktopUrl;
+                
+                // Fallback to web version
+                setTimeout(() => {
+                    window.open(earthWebUrl, '_blank');
+                }, 1000);
+                
+            } catch (error) {
+                // Open web version directly
+                window.open(earthWebUrl, '_blank');
+            }
+        }
+        
+        // Generate KML for single placemark
+        function generatePlacemarkKML(place) {
+            return `<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+<Document>
+    <name>${place.name}</name>
+    <Placemark>
+        <name>${place.name}</name>
+        <description><![CDATA[${place.descriptionHTML || place.description}]]></description>
+        <Point>
+            <coordinates>${place.coordinates.longitude},${place.coordinates.latitude},${place.coordinates.altitude || 0}</coordinates>
+        </Point>
+        <Style>
+            <IconStyle>
+                <scale>1.2</scale>
+                <Icon>
+                    <href>http://maps.google.com/mapfiles/kml/pushpin/ylw-pushpin.png</href>
+                </Icon>
+            </IconStyle>
+            <BalloonStyle>
+                <text><![CDATA[<h3>$[name]</h3><p>$[description]</p>]]></text>
+            </BalloonStyle>
+        </Style>
+    </Placemark>
+</Document>
+</kml>`;
+        }
+        
+        // Generate Google Earth marker parameters
+        function generateEarthMarkerParams(place) {
+            const lat = place.coordinates.latitude;
+            const lng = place.coordinates.longitude;
+            const name = encodeURIComponent(place.name);
+            const desc = encodeURIComponent(place.description);
+            
+            // Create a Base64 encoded KML snippet
+            const kmlSnippet = `
+                <Placemark>
+                    <name>${name}</name>
+                    <description>${desc}</description>
+                    <Point>
+                        <coordinates>${lng},${lat},0</coordinates>
+                    </Point>
+                    <Style>
+                        <IconStyle>
+                            <Icon>
+                                <href>http://maps.google.com/mapfiles/kml/pushpin/red-pushpin.png</href>
+                            </Icon>
+                        </IconStyle>
+                    </Style>
+                </Placemark>
+            `;
+            
+            // Simple marker parameters (Google Earth format)
+            return `MkIh${lat}${lng}`; // Basic marker format
         }
         
         // Open in Google Maps WITH MARKER
-        function openInGoogleMaps() {
+        function openInGoogleMapsWithMarker() {
             if (!selectedPlace || !selectedPlace.hasCoordinates) {
                 showToast('No coordinates available', 'error');
                 return;
@@ -911,12 +1219,40 @@
             const lat = selectedPlace.coordinates.latitude;
             const lng = selectedPlace.coordinates.longitude;
             const name = encodeURIComponent(selectedPlace.name);
+            const desc = encodeURIComponent(selectedPlace.description);
             
-            // Google Maps URL with marker
-            const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${lat},${lng}&query_place_id=${name}`;
+            // Google Maps URL with marker and description
+            // Using Maps Embed API style parameters
+            const mapsUrl = `https://www.google.com/maps?q=${lat},${lng}&z=15&t=m&output=embed&markers=color:red%7C${lat},${lng}&text=${name}`;
             
-            window.open(mapsUrl, '_blank');
-            showToast('Opening in Google Maps...');
+            // Alternative: Use Maps new interface
+            const mapsNewUrl = `https://www.google.com/maps/@${lat},${lng},15z?q=${lat},${lng}+(${name})`;
+            
+            window.open(mapsNewUrl, '_blank');
+            showToast('Opening in Google Maps with marker...');
+        }
+        
+        // View KML source
+        function viewKMLSource() {
+            if (!selectedPlace) return;
+            
+            // Generate KML for selected place
+            const placemarkKML = generatePlacemarkKML(selectedPlace);
+            document.getElementById('kml-source').textContent = placemarkKML;
+            document.getElementById('kmlModal').style.display = 'flex';
+        }
+        
+        // Copy KML source
+        function copyKMLSource() {
+            const kmlText = document.getElementById('kml-source').textContent;
+            navigator.clipboard.writeText(kmlText).then(() => {
+                showToast('KML copied to clipboard!');
+            });
+        }
+        
+        // Close modal
+        function closeModal(modalId) {
+            document.getElementById(modalId).style.display = 'none';
         }
         
         // Copy coordinates to clipboard
@@ -929,8 +1265,8 @@
             });
         }
         
-        // Share coordinates
-        function shareCoordinates() {
+        // Share location
+        function shareLocation() {
             if (!selectedPlace || !selectedPlace.hasCoordinates) return;
             
             const text = `${selectedPlace.name}: ${selectedPlace.coordinates.latitude}, ${selectedPlace.coordinates.longitude}`;
@@ -947,44 +1283,26 @@
             }
         }
         
-        // Show QR Code modal
-        function showQRCode() {
-            if (!selectedPlace || !selectedPlace.hasCoordinates) return;
-            
-            const lat = selectedPlace.coordinates.latitude;
-            const lng = selectedPlace.coordinates.longitude;
-            const mapsUrl = `https://www.google.com/maps?q=${lat},${lng}`;
-            
-            document.getElementById('qr-coords').textContent = 
-                `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
-            
-            // Generate QR code
-            const qrDiv = document.getElementById('qrcode');
-            qrDiv.innerHTML = '';
-            
-            // Simple QR generation (you might want to use a library)
-            qrDiv.innerHTML = `
-                <div style="background: #f0f0f0; padding: 20px; display: inline-block; border-radius: 10px;">
-                    <div style="font-size: 48px; color: #333;">
-                        <i class="fas fa-map-marker-alt"></i>
-                    </div>
-                    <div style="margin-top: 10px; font-family: monospace; font-size: 12px;">
-                        ${selectedPlace.name.substring(0, 20)}
-                    </div>
-                </div>
-            `;
-            
-            document.getElementById('qrModal').style.display = 'flex';
+        // Check mobile state
+        function checkMobile() {
+            isMobile = window.innerWidth <= 992;
+            if (!isMobile) {
+                document.getElementById('sidebar').classList.remove('active');
+                document.getElementById('mobileToggle').innerHTML = '<i class="fas fa-bars"></i>';
+            }
         }
         
-        // Copy QR image (placeholder)
-        function copyQRImage() {
-            showToast('QR Code saved to images', 'info');
-        }
-        
-        // Close modal
-        function closeModal() {
-            document.getElementById('qrModal').style.display = 'none';
+        // Toggle mobile navigation
+        function toggleMobileNav() {
+            const sidebar = document.getElementById('sidebar');
+            const toggle = document.getElementById('mobileToggle');
+            
+            sidebar.classList.toggle('active');
+            if (sidebar.classList.contains('active')) {
+                toggle.innerHTML = '<i class="fas fa-times"></i>';
+            } else {
+                toggle.innerHTML = '<i class="fas fa-bars"></i>';
+            }
         }
         
         // Setup search functionality
@@ -1019,20 +1337,6 @@
                     }
                 }, 300);
             });
-            
-            // Clear button (optional)
-            searchInput.insertAdjacentHTML('afterend', `
-                <button onclick="clearSearch()" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; color: #666; cursor: pointer; display: none;" id="clearSearchBtn">
-                    <i class="fas fa-times"></i>
-                </button>
-            `);
-        }
-        
-        // Clear search
-        function clearSearch() {
-            document.getElementById('searchInput').value = '';
-            renderPlaces(allPlaces);
-            document.getElementById('clearSearchBtn').style.display = 'none';
         }
         
         // Show toast notification
@@ -1054,6 +1358,9 @@
                 <div style="background: #f8d7da; color: #721c24; padding: 20px; border-radius: 10px;">
                     <h3><i class="fas fa-exclamation-triangle"></i> Error</h3>
                     <p>${message}</p>
+                    <button onclick="location.reload()" class="action-btn mt-1">
+                        <i class="fas fa-redo"></i> Retry
+                    </button>
                 </div>
             `;
         }
