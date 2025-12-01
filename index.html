@@ -1,17 +1,27 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Google Earth Places Search</title>
+    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KML Placemarks Navigator</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
+        /* Reset & Base */
+        * { 
+            margin: 0; 
+            padding: 0; 
+            box-sizing: border-box; 
+        }
+        
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
-            padding: 20px;
+            padding: 15px;
         }
+        
+        /* Container */
         .container {
             max-width: 1200px;
             margin: 0 auto;
@@ -19,280 +29,702 @@
             border-radius: 20px;
             box-shadow: 0 20px 60px rgba(0,0,0,0.3);
             overflow: hidden;
+            min-height: 100vh;
         }
+        
+        /* Header */
         header {
             background: linear-gradient(90deg, #1a73e8, #4CAF50);
             color: white;
-            padding: 40px 30px;
+            padding: 30px 20px;
             text-align: center;
         }
+        
+        .mobile-header {
+            display: none;
+            background: linear-gradient(90deg, #1a73e8, #4CAF50);
+            color: white;
+            padding: 15px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+        }
+        
+        .mobile-header h1 {
+            font-size: 1.2em;
+            margin: 0;
+        }
+        
         h1 {
-            font-size: 2.5em;
+            font-size: 2em;
             margin-bottom: 10px;
             display: flex;
             align-items: center;
             justify-content: center;
             gap: 15px;
+            flex-wrap: wrap;
         }
+        
+        /* Main Content */
         .main-content {
             display: grid;
             grid-template-columns: 1fr 2fr;
-            gap: 30px;
-            padding: 30px;
+            gap: 25px;
+            padding: 25px;
             min-height: 500px;
         }
-        @media (max-width: 768px) {
-            .main-content {
-                grid-template-columns: 1fr;
-            }
+        
+        /* Mobile Navigation Toggle */
+        .mobile-nav-toggle {
+            display: none;
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: #1a73e8;
+            color: white;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            border: none;
+            font-size: 24px;
+            z-index: 1000;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            cursor: pointer;
         }
+        
+        /* Sidebar & Content Areas */
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        
+        .content-area {
+            overflow-y: auto;
+            max-height: 70vh;
+        }
+        
+        /* Search Box */
         .search-box {
             width: 100%;
             padding: 15px;
-            font-size: 18px;
+            font-size: 16px;
             border: 3px solid #1a73e8;
-            border-radius: 10px;
-            margin-bottom: 20px;
+            border-radius: 12px;
+            margin-bottom: 15px;
+            transition: all 0.3s;
         }
+        
+        .search-box:focus {
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(26, 115, 232, 0.2);
+        }
+        
+        /* Cards */
         .place-card {
             background: #f8f9fa;
-            padding: 20px;
-            margin: 15px 0;
-            border-radius: 10px;
+            padding: 18px;
+            margin: 12px 0;
+            border-radius: 12px;
             border-left: 5px solid #4CAF50;
             cursor: pointer;
             transition: all 0.3s;
+            position: relative;
         }
+        
         .place-card:hover {
-            transform: translateX(10px);
+            transform: translateX(5px);
             box-shadow: 0 5px 15px rgba(0,0,0,0.1);
         }
+        
+        .place-card.selected {
+            background: #e8f0fe;
+            border-left-color: #1a73e8;
+            box-shadow: 0 0 0 2px #1a73e8;
+        }
+        
         .place-name {
             font-weight: bold;
             color: #2c3e50;
-            font-size: 18px;
-            margin-bottom: 8px;
+            font-size: 16px;
+            margin-bottom: 6px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
-        .earth-btn {
+        
+        .place-id {
+            background: #1a73e8;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 11px;
+        }
+        
+        /* Buttons */
+        .action-btn {
             display: inline-flex;
             align-items: center;
+            justify-content: center;
             gap: 8px;
             background: #34a853;
             color: white;
-            padding: 10px 20px;
-            border-radius: 5px;
+            padding: 12px 20px;
+            border-radius: 8px;
             text-decoration: none;
-            margin-top: 10px;
             font-weight: bold;
             cursor: pointer;
             border: none;
-            margin-right: 10px;
+            width: 100%;
+            margin: 5px 0;
+            transition: all 0.3s;
         }
-        .earth-btn:hover {
-            background: #2d8b47;
+        
+        .action-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
         }
-        .maps-btn {
+        
+        .action-btn.maps {
             background: #1a73e8;
         }
-        .maps-btn:hover {
-            background: #0d62d9;
+        
+        .action-btn.copy {
+            background: #9c27b0;
         }
-        .stats {
+        
+        .action-btn.share {
+            background: #ff9800;
+        }
+        
+        .action-btn:disabled {
+            background: #cccccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        /* Button Groups */
+        .btn-group {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin: 15px 0;
+        }
+        
+        .quick-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 10px;
+            flex-wrap: wrap;
+        }
+        
+        .quick-btn {
+            padding: 6px 12px;
+            background: #f0f0f0;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        /* Info Boxes */
+        .info-box {
             background: #e8f0fe;
-            padding: 20px;
-            border-radius: 10px;
-            margin: 20px 0;
+            padding: 18px;
+            border-radius: 12px;
+            margin: 15px 0;
         }
+        
+        .instructions {
+            background: #fff3cd;
+            padding: 18px;
+            border-radius: 12px;
+            margin: 15px 0;
+        }
+        
+        .coordinate-box {
+            background: #2c3e50;
+            color: white;
+            padding: 12px;
+            border-radius: 8px;
+            margin: 10px 0;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+        }
+        
+        /* Stats */
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin: 15px 0;
+        }
+        
+        .stat-item {
+            background: white;
+            padding: 12px;
+            border-radius: 8px;
+            text-align: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        .stat-number {
+            font-size: 24px;
+            font-weight: bold;
+            color: #1a73e8;
+            margin: 5px 0;
+        }
+        
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        
+        .modal-content {
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            max-width: 500px;
+            width: 100%;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        
+        .modal-actions {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        
+        /* Loading */
         .loading {
             text-align: center;
             padding: 40px;
             color: #666;
         }
-        .instructions {
-            background: #fff3cd;
-            padding: 20px;
-            border-radius: 10px;
-            margin: 20px 0;
+        
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid #1a73e8;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
         }
-        .coordinate-info {
-            background: #2c3e50;
+        
+        /* Toast */
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #34a853;
             color: white;
-            padding: 8px 12px;
-            border-radius: 4px;
-            font-family: monospace;
-            font-size: 12px;
-            margin: 8px 0;
-            display: inline-block;
+            padding: 12px 24px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            z-index: 1000;
+            display: none;
+            animation: slideUp 0.3s ease;
         }
-        .action-buttons {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
-            margin-top: 15px;
-        }
-        .url-info {
-            background: #f1f8ff;
-            border: 1px solid #d1e3ff;
-            padding: 10px;
-            border-radius: 5px;
-            margin-top: 10px;
-            font-size: 12px;
-            color: #666;
-        }
+        
+        /* Animations */
         @keyframes spin {
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
+        
+        @keyframes slideUp {
+            from { transform: translate(-50%, 100px); opacity: 0; }
+            to { transform: translate(-50%, 0); opacity: 1; }
+        }
+        
+        /* Mobile Specific */
+        @media (max-width: 992px) {
+            .main-content {
+                grid-template-columns: 1fr;
+                gap: 0;
+                padding: 15px;
+            }
+            
+            .sidebar {
+                display: none;
+            }
+            
+            .sidebar.active {
+                display: flex;
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100vh;
+                background: white;
+                z-index: 999;
+                padding: 70px 20px 20px;
+                overflow-y: auto;
+            }
+            
+            .mobile-header {
+                display: block;
+            }
+            
+            .desktop-header {
+                display: none;
+            }
+            
+            .mobile-nav-toggle {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+            
+            .content-area {
+                max-height: none;
+                padding-bottom: 80px;
+            }
+            
+            h1 {
+                font-size: 1.5em;
+                gap: 10px;
+            }
+            
+            header {
+                padding: 20px 15px;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .btn-group {
+                grid-template-columns: 1fr;
+            }
+            
+            .stats {
+                grid-template-columns: 1fr;
+            }
+            
+            .place-card {
+                padding: 15px;
+                margin: 10px 0;
+            }
+            
+            .modal-content {
+                padding: 20px;
+                margin: 10px;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            body {
+                padding: 10px;
+            }
+            
+            .container {
+                border-radius: 15px;
+            }
+            
+            .search-box {
+                padding: 12px;
+                font-size: 15px;
+            }
+            
+            .action-btn {
+                padding: 10px 15px;
+                font-size: 14px;
+            }
+            
+            .modal-actions {
+                grid-template-columns: 1fr;
+            }
+            
+            .quick-actions {
+                flex-direction: column;
+            }
+            
+            .quick-btn {
+                width: 100%;
+                justify-content: center;
+            }
+        }
+        
+        /* Utility Classes */
+        .hidden {
+            display: none !important;
+        }
+        
+        .visible {
+            display: block !important;
+        }
+        
+        .text-center {
+            text-align: center;
+        }
+        
+        .mt-1 { margin-top: 10px; }
+        .mt-2 { margin-top: 20px; }
+        .mb-1 { margin-bottom: 10px; }
+        .mb-2 { margin-bottom: 20px; }
+        .p-1 { padding: 10px; }
+        .p-2 { padding: 20px; }
     </style>
 </head>
 <body>
+    <!-- Mobile Header -->
+    <div class="mobile-header">
+        <h1>
+            <i class="fas fa-globe-americas"></i>
+            KML Navigator
+            <i class="fas fa-map-marker-alt"></i>
+        </h1>
+    </div>
+    
     <div class="container">
-        <header>
+        <!-- Desktop Header -->
+        <header class="desktop-header">
             <h1>
                 <i class="fas fa-globe-americas"></i>
-                Google Earth Places Search
-                <i class="fas fa-search"></i>
+                KML Placemarks Navigator
+                <i class="fas fa-map-marker-alt"></i>
             </h1>
-            <p style="opacity: 0.9;">Search and navigate directly to locations</p>
+            <p style="opacity: 0.9;">Navigate directly to locations with markers</p>
         </header>
         
         <div class="main-content">
-            <div>
+            <!-- Sidebar -->
+            <div class="sidebar" id="sidebar">
                 <div class="instructions">
                     <h3><i class="fas fa-info-circle"></i> How to Use</h3>
                     <ol style="margin-top: 10px; padding-left: 20px;">
-                        <li>KML file is automatically loaded</li>
-                        <li>Click any place to view coordinates</li>
-                        <li>Use buttons to open in Google Earth/Maps</li>
-                        <li>Coordinates are passed directly to apps</li>
+                        <li>Search places in the list</li>
+                        <li>Click any place to select it</li>
+                        <li>Use buttons to open with marker</li>
+                        <li>Coordinates will be copied automatically</li>
                     </ol>
                 </div>
                 
-                <div class="stats">
-                    <h3><i class="fas fa-chart-bar"></i> Statistics</h3>
-                    <p id="place-count">Loading places...</p>
-                    <p id="file-info"></p>
+                <div class="info-box">
+                    <h3><i class="fas fa-location-crosshairs"></i> Selected Location</h3>
+                    <div id="selected-info">
+                        <p class="mt-1">No location selected</p>
+                    </div>
+                    
+                    <div id="selected-coords" class="hidden">
+                        <div class="coordinate-box mt-1">
+                            <div><strong>Latitude:</strong> <span id="coord-lat"></span></div>
+                            <div><strong>Longitude:</strong> <span id="coord-lng"></span></div>
+                        </div>
+                        
+                        <div class="btn-group mt-2">
+                            <button class="action-btn" id="open-earth-btn">
+                                <i class="fas fa-globe-americas"></i> Earth
+                            </button>
+                            <button class="action-btn maps" id="open-maps-btn">
+                                <i class="fas fa-map-marked-alt"></i> Maps
+                            </button>
+                        </div>
+                        
+                        <div class="quick-actions">
+                            <button class="quick-btn" onclick="copyCoordinates()">
+                                <i class="fas fa-copy"></i> Copy
+                            </button>
+                            <button class="quick-btn" onclick="shareCoordinates()">
+                                <i class="fas fa-share"></i> Share
+                            </button>
+                            <button class="quick-btn" onclick="showQRCode()">
+                                <i class="fas fa-qrcode"></i> QR Code
+                            </button>
+                        </div>
+                    </div>
                 </div>
                 
-                <div id="coordinate-display" style="display: none; margin-top: 20px; padding: 15px; background: #e8f0fe; border-radius: 10px;">
-                    <h4><i class="fas fa-map-marker-alt"></i> Selected Location</h4>
-                    <p id="selected-name"></p>
-                    <p id="selected-coords"></p>
-                    <div class="action-buttons">
-                        <button onclick="openInGoogleEarth()" class="earth-btn">
-                            <i class="fas fa-globe-americas"></i> Google Earth
-                        </button>
-                        <button onclick="openInGoogleMaps()" class="earth-btn maps-btn">
-                            <i class="fas fa-map-marked-alt"></i> Google Maps
-                        </button>
+                <div class="stats">
+                    <div class="stat-item">
+                        <i class="fas fa-map-marker-alt"></i>
+                        <div class="stat-number" id="total-places">0</div>
+                        <small>Total Places</small>
                     </div>
+                    <div class="stat-item">
+                        <i class="fas fa-crosshairs"></i>
+                        <div class="stat-number" id="places-with-coords">0</div>
+                        <small>With Coords</small>
+                    </div>
+                </div>
+                
+                <div class="info-box">
+                    <h3><i class="fas fa-file-alt"></i> KML File</h3>
+                    <p id="kml-info">Loading...</p>
                 </div>
             </div>
             
-            <div>
+            <!-- Main Content Area -->
+            <div class="content-area">
                 <input type="text" id="searchInput" class="search-box" placeholder="Search places...">
                 
                 <div id="searchResults">
                     <div class="loading">
-                        <div style="width: 50px; height: 50px; border: 5px solid #f3f3f3; border-top: 5px solid #1a73e8; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 20px;"></div>
-                        <h3>Loading your places...</h3>
+                        <div class="spinner"></div>
+                        <h3>Loading places...</h3>
                     </div>
                 </div>
             </div>
         </div>
         
-        <footer style="text-align: center; padding: 20px; background: #f8f9fa; color: #666;">
-            <p><i class="fas fa-heart" style="color: #e74c3c;"></i> KML file: <span id="kml-filename">Loading...</span></p>
-        </footer>
+        <!-- Mobile Navigation Toggle -->
+        <button class="mobile-nav-toggle" id="mobileToggle">
+            <i class="fas fa-bars"></i>
+        </button>
+        
+        <!-- Modal for QR Code -->
+        <div class="modal" id="qrModal">
+            <div class="modal-content">
+                <h3><i class="fas fa-qrcode"></i> Location QR Code</h3>
+                <div id="qrcode" class="text-center mt-2 mb-2"></div>
+                <p class="text-center" id="qr-coords"></p>
+                <div class="modal-actions">
+                    <button class="action-btn copy" onclick="copyQRImage()">
+                        <i class="fas fa-download"></i> Save QR
+                    </button>
+                    <button class="action-btn" onclick="closeModal()">
+                        <i class="fas fa-times"></i> Close
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Toast Notification -->
+        <div class="toast" id="toast"></div>
     </div>
 
     <script>
-        // Configuration - CHANGE THIS TO YOUR KML FILENAME
+        // Configuration
         const KML_FILE_NAME = 'ឃុំផ្លូវមាស.kml';
         
         // Global variables
         let allPlaces = [];
         let kmlData = {};
         let selectedPlace = null;
+        let isMobile = window.innerWidth <= 992;
         
-        // Load KML file on page load
+        // Initialize on page load
         document.addEventListener('DOMContentLoaded', async function() {
-            console.log('Loading KML file:', KML_FILE_NAME);
+            // Check if mobile
+            checkMobile();
+            window.addEventListener('resize', checkMobile);
             
-            try {
-                // Load the KML file
-                const response = await fetch(KML_FILE_NAME);
+            // Setup mobile navigation
+            document.getElementById('mobileToggle').addEventListener('click', toggleMobileNav);
+            
+            // Setup buttons
+            document.getElementById('open-earth-btn').addEventListener('click', openInGoogleEarth);
+            document.getElementById('open-maps-btn').addEventListener('click', openInGoogleMaps);
+            
+            // Load KML
+            await loadKML();
+            
+            // Setup search
+            setupSearch();
+            
+            // Setup click outside for mobile sidebar
+            document.addEventListener('click', function(event) {
+                const sidebar = document.getElementById('sidebar');
+                const toggle = document.getElementById('mobileToggle');
                 
-                if (!response.ok) {
-                    throw new Error(`Failed to load KML file: ${response.status}`);
+                if (isMobile && 
+                    sidebar.classList.contains('active') && 
+                    !sidebar.contains(event.target) && 
+                    !toggle.contains(event.target)) {
+                    sidebar.classList.remove('active');
+                    toggle.innerHTML = '<i class="fas fa-bars"></i>';
                 }
-                
-                const kmlText = await response.text();
-                kmlData = await parseKML(kmlText);
-                allPlaces = kmlData.places;
-                
-                // Update UI
-                updateStatistics();
-                renderPlaces(allPlaces);
-                setupSearch();
-                
-            } catch (error) {
-                console.error('Error loading KML:', error);
-                document.getElementById('searchResults').innerHTML = `
-                    <div style="background: #f8d7da; color: #721c24; padding: 20px; border-radius: 10px;">
-                        <h3><i class="fas fa-exclamation-triangle"></i> Error Loading KML File</h3>
-                        <p>${error.message}</p>
-                    </div>
-                `;
-            }
+            });
         });
         
+        // Check mobile state
+        function checkMobile() {
+            isMobile = window.innerWidth <= 992;
+            if (!isMobile) {
+                document.getElementById('sidebar').classList.remove('active');
+                document.getElementById('mobileToggle').innerHTML = '<i class="fas fa-bars"></i>';
+            }
+        }
+        
+        // Toggle mobile navigation
+        function toggleMobileNav() {
+            const sidebar = document.getElementById('sidebar');
+            const toggle = document.getElementById('mobileToggle');
+            
+            sidebar.classList.toggle('active');
+            if (sidebar.classList.contains('active')) {
+                toggle.innerHTML = '<i class="fas fa-times"></i>';
+            } else {
+                toggle.innerHTML = '<i class="fas fa-bars"></i>';
+            }
+        }
+        
+        // Load KML file
+        async function loadKML() {
+            try {
+                const response = await fetch(KML_FILE_NAME);
+                if (!response.ok) throw new Error(`Failed to load: ${response.status}`);
+                
+                const kmlText = await response.text();
+                kmlData = parseKML(kmlText);
+                allPlaces = kmlData.places;
+                
+                updateUI();
+                
+            } catch (error) {
+                showError(`Error loading KML: ${error.message}`);
+            }
+        }
+        
         // Parse KML data
-        async function parseKML(kmlText) {
+        function parseKML(kmlText) {
             const parser = new DOMParser();
             const xmlDoc = parser.parseFromString(kmlText, 'text/xml');
             
-            // Extract places
             const placemarks = xmlDoc.getElementsByTagName('Placemark');
             const places = [];
             
             for (let i = 0; i < placemarks.length; i++) {
                 const placemark = placemarks[i];
                 
-                // Extract name
+                // Name
                 const nameElement = placemark.getElementsByTagName('name')[0];
                 const name = nameElement ? nameElement.textContent.trim() : `Place ${i + 1}`;
                 
-                // Extract description
+                // Description
                 let description = '';
                 const descElement = placemark.getElementsByTagName('description')[0];
                 if (descElement) {
-                    description = descElement.textContent.trim();
-                    description = description.replace(/<[^>]*>/g, '');
+                    description = descElement.textContent.trim().replace(/<[^>]*>/g, '');
                 }
                 
-                // Extract coordinates - KML format is: longitude,latitude,altitude
+                // Coordinates (KML: lon,lat,alt)
                 let coordinates = null;
-                let latitude = null;
-                let longitude = null;
-                let altitude = null;
-                
                 const coordElement = placemark.getElementsByTagName('coordinates')[0];
                 if (coordElement) {
-                    const coordText = coordElement.textContent.trim();
-                    const coords = coordText.split(',').map(coord => coord.trim());
-                    
-                    if (coords.length >= 2) {
-                        // KML format: longitude,latitude[,altitude]
-                        longitude = parseFloat(coords[0]);
-                        latitude = parseFloat(coords[1]);
-                        altitude = coords.length >= 3 ? parseFloat(coords[2]) : 0;
-                        
+                    const parts = coordElement.textContent.trim().split(',');
+                    if (parts.length >= 2) {
                         coordinates = {
-                            longitude: longitude,
-                            latitude: latitude,
-                            altitude: altitude,
-                            raw: coordText
+                            longitude: parseFloat(parts[0]),
+                            latitude: parseFloat(parts[1]),
+                            altitude: parts.length >= 3 ? parseFloat(parts[2]) : 0
                         };
                     }
                 }
@@ -306,8 +738,7 @@
                 });
             }
             
-            // Extract document info
-            const docName = xmlDoc.getElementsByTagName('name')[0]?.textContent || 'Google Earth Project';
+            const docName = xmlDoc.getElementsByTagName('name')[0]?.textContent || 'KML File';
             
             return {
                 name: docName,
@@ -316,19 +747,19 @@
             };
         }
         
-        // Update statistics
-        function updateStatistics() {
-            const placesWithCoords = allPlaces.filter(p => p.hasCoordinates).length;
+        // Update UI after loading
+        function updateUI() {
+            // Update stats
+            const withCoords = allPlaces.filter(p => p.hasCoordinates).length;
+            document.getElementById('total-places').textContent = allPlaces.length;
+            document.getElementById('places-with-coords').textContent = withCoords;
+            document.getElementById('kml-info').textContent = `${kmlData.name} (${KML_FILE_NAME})`;
             
-            document.getElementById('place-count').innerHTML = 
-                `<i class="fas fa-map-marker-alt"></i> Total Places: <strong>${allPlaces.length}</strong><br>
-                 <i class="fas fa-crosshairs"></i> With Coordinates: <strong>${placesWithCoords}</strong>`;
-            document.getElementById('file-info').innerHTML = 
-                `<i class="fas fa-file-alt"></i> Project: <strong>${kmlData.name || 'Untitled'}</strong>`;
-            document.getElementById('kml-filename').textContent = KML_FILE_NAME;
+            // Render places
+            renderPlaces(allPlaces);
         }
         
-        // Render places
+        // Render places list
         function renderPlaces(places) {
             const container = document.getElementById('searchResults');
             
@@ -336,7 +767,7 @@
                 container.innerHTML = `
                     <div class="instructions">
                         <h3><i class="fas fa-search"></i> No places found</h3>
-                        <p>Try changing your search.</p>
+                        <p>Try a different search term.</p>
                     </div>
                 `;
                 return;
@@ -344,36 +775,36 @@
             
             let html = '';
             places.forEach(place => {
+                const isSelected = selectedPlace && selectedPlace.id === place.id;
+                
                 html += `
-                    <div class="place-card" onclick="selectPlace(${place.id})">
+                    <div class="place-card ${isSelected ? 'selected' : ''}" 
+                         onclick="selectPlace(${place.id})" 
+                         data-place-id="${place.id}">
                         <div class="place-name">
-                            <i class="fas fa-map-pin"></i> ${escapeHtml(place.name)}
+                            <span><i class="fas fa-map-pin"></i> ${escapeHtml(place.name)}</span>
+                            <span class="place-id">#${place.id}</span>
                         </div>
                         
                         ${place.description ? `
-                            <p style="color: #666; margin: 10px 0; line-height: 1.5;">
-                                ${escapeHtml(place.description.substring(0, 150))}
-                                ${place.description.length > 150 ? '...' : ''}
+                            <p style="color: #666; margin: 8px 0; font-size: 14px; line-height: 1.4;">
+                                ${escapeHtml(place.description.substring(0, 100))}
+                                ${place.description.length > 100 ? '...' : ''}
                             </p>
                         ` : ''}
                         
                         ${place.hasCoordinates ? `
-                            <div class="coordinate-info">
-                                <i class="fas fa-location-dot"></i> 
-                                ${place.coordinates.latitude.toFixed(6)}, ${place.coordinates.longitude.toFixed(6)}
-                                ${place.coordinates.altitude ? ` (${place.coordinates.altitude.toFixed(1)}m)` : ''}
+                            <div style="margin: 8px 0;">
+                                <span style="background: #2c3e50; color: white; padding: 4px 8px; border-radius: 4px; font-size: 11px; display: inline-block;">
+                                    <i class="fas fa-location-dot"></i>
+                                    ${place.coordinates.latitude.toFixed(6)}, ${place.coordinates.longitude.toFixed(6)}
+                                </span>
                             </div>
                         ` : `
-                            <div style="color: #ff9800; margin: 10px 0;">
-                                <i class="fas fa-exclamation-triangle"></i> No coordinates available
+                            <div style="color: #ff9800; font-size: 12px; margin: 8px 0;">
+                                <i class="fas fa-exclamation-triangle"></i> No coordinates
                             </div>
                         `}
-                        
-                        ${place.hasCoordinates ? `
-                            <div class="url-info">
-                                <small>Click to select, then use buttons to open</small>
-                            </div>
-                        ` : ''}
                     </div>
                 `;
             });
@@ -383,74 +814,177 @@
         
         // Select a place
         function selectPlace(placeId) {
-            selectedPlace = allPlaces.find(p => p.id === placeId);
-            if (!selectedPlace) return;
+            // Remove previous selection
+            document.querySelectorAll('.place-card.selected').forEach(card => {
+                card.classList.remove('selected');
+            });
             
-            // Update display
-            document.getElementById('coordinate-display').style.display = 'block';
-            document.getElementById('selected-name').innerHTML = 
-                `<strong>${escapeHtml(selectedPlace.name)}</strong>`;
-            
-            if (selectedPlace.hasCoordinates) {
-                document.getElementById('selected-coords').innerHTML = 
-                    `📍 Latitude: <strong>${selectedPlace.coordinates.latitude.toFixed(6)}</strong><br>
-                     📍 Longitude: <strong>${selectedPlace.coordinates.longitude.toFixed(6)}</strong>`;
-            } else {
-                document.getElementById('selected-coords').innerHTML = 
-                    `<span style="color: #ff9800;">No coordinates available</span>`;
+            // Add selection to clicked card
+            const card = document.querySelector(`[data-place-id="${placeId}"]`);
+            if (card) {
+                card.classList.add('selected');
+                card.scrollIntoView({ behavior: 'smooth', block: 'center' });
             }
             
-            // Scroll to display
-            document.getElementById('coordinate-display').scrollIntoView({ behavior: 'smooth' });
+            // Update selected place
+            selectedPlace = allPlaces.find(p => p.id === placeId);
+            
+            // Update sidebar
+            updateSelectedInfo();
+            
+            // Close mobile sidebar if open
+            if (isMobile) {
+                document.getElementById('sidebar').classList.remove('active');
+                document.getElementById('mobileToggle').innerHTML = '<i class="fas fa-bars"></i>';
+            }
         }
         
-        // Open in Google Earth
+        // Update selected place info in sidebar
+        function updateSelectedInfo() {
+            const infoDiv = document.getElementById('selected-info');
+            const coordsDiv = document.getElementById('selected-coords');
+            
+            if (!selectedPlace) {
+                infoDiv.innerHTML = '<p>No location selected</p>';
+                coordsDiv.classList.add('hidden');
+                return;
+            }
+            
+            // Update info
+            infoDiv.innerHTML = `
+                <h4 style="color: #1a73e8; margin-bottom: 5px;">
+                    <i class="fas fa-map-marker-alt"></i> ${escapeHtml(selectedPlace.name)}
+                </h4>
+                ${selectedPlace.description ? `
+                    <p style="font-size: 14px; color: #666;">${escapeHtml(selectedPlace.description.substring(0, 80))}...</p>
+                ` : ''}
+            `;
+            
+            // Update coordinates if available
+            if (selectedPlace.hasCoordinates) {
+                document.getElementById('coord-lat').textContent = selectedPlace.coordinates.latitude.toFixed(6);
+                document.getElementById('coord-lng').textContent = selectedPlace.coordinates.longitude.toFixed(6);
+                coordsDiv.classList.remove('hidden');
+                
+                // Enable/disable buttons
+                document.getElementById('open-earth-btn').disabled = false;
+                document.getElementById('open-maps-btn').disabled = false;
+            } else {
+                coordsDiv.classList.add('hidden');
+                document.getElementById('open-earth-btn').disabled = true;
+                document.getElementById('open-maps-btn').disabled = true;
+            }
+        }
+        
+        // Open in Google Earth WITH MARKER
         function openInGoogleEarth() {
             if (!selectedPlace || !selectedPlace.hasCoordinates) {
-                alert('No coordinates available for this location');
+                showToast('No coordinates available', 'error');
                 return;
             }
             
             const lat = selectedPlace.coordinates.latitude;
-            const lon = selectedPlace.coordinates.longitude;
+            const lng = selectedPlace.coordinates.longitude;
             
-            // Google Earth Web URL with correct format
-            const earthWebUrl = `https://earth.google.com/web/@${lat},${lon},1000a,1000d,35y,0h,0t,0r`;
+            // Google Earth Web with marker parameters
+            const earthUrl = `https://earth.google.com/web/@${lat},${lng},100a,1000d,35y,0h,0t,0r/data=${encodeURIComponent(`MkBh${lat}${lng}`)}`;
             
-            // Google Earth Desktop protocol (if installed)
-            const earthDesktopUrl = `googleearth://${lat},${lon}`;
+            // Try desktop first
+            const desktopUrl = `googleearth://${lat},${lng}`;
+            window.location.href = desktopUrl;
             
-            // Try desktop first, then fall back to web
-            window.location.href = earthDesktopUrl;
-            
-            // If desktop doesn't open, fall back to web after delay
+            // Fallback to web
             setTimeout(() => {
-                window.open(earthWebUrl, '_blank');
+                window.open(earthUrl, '_blank');
             }, 500);
+            
+            showToast('Opening in Google Earth...');
         }
         
-        // Open in Google Maps
+        // Open in Google Maps WITH MARKER
         function openInGoogleMaps() {
             if (!selectedPlace || !selectedPlace.hasCoordinates) {
-                alert('No coordinates available for this location');
+                showToast('No coordinates available', 'error');
                 return;
             }
             
             const lat = selectedPlace.coordinates.latitude;
-            const lon = selectedPlace.coordinates.longitude;
+            const lng = selectedPlace.coordinates.longitude;
+            const name = encodeURIComponent(selectedPlace.name);
             
-            // Google Maps URL - Correct format
-            // Option 1: Direct coordinates (zoom level 15)
-            const mapsUrl = `https://www.google.com/maps/@${lat},${lon},15z`;
+            // Google Maps URL with marker
+            const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${lat},${lng}&query_place_id=${name}`;
             
-            // Option 2: Search with coordinates (more reliable)
-            const mapsSearchUrl = `https://www.google.com/maps/search/?api=1&query=${lat},${lon}`;
+            window.open(mapsUrl, '_blank');
+            showToast('Opening in Google Maps...');
+        }
+        
+        // Copy coordinates to clipboard
+        function copyCoordinates() {
+            if (!selectedPlace || !selectedPlace.hasCoordinates) return;
             
-            // Option 3: Place marker at coordinates
-            const mapsPlaceUrl = `https://www.google.com/maps/place/${lat},${lon}/@${lat},${lon},15z`;
+            const text = `${selectedPlace.coordinates.latitude}, ${selectedPlace.coordinates.longitude}`;
+            navigator.clipboard.writeText(text).then(() => {
+                showToast('Coordinates copied to clipboard!');
+            });
+        }
+        
+        // Share coordinates
+        function shareCoordinates() {
+            if (!selectedPlace || !selectedPlace.hasCoordinates) return;
             
-            // Open the most reliable one
-            window.open(mapsSearchUrl, '_blank');
+            const text = `${selectedPlace.name}: ${selectedPlace.coordinates.latitude}, ${selectedPlace.coordinates.longitude}`;
+            const url = `https://www.google.com/maps?q=${selectedPlace.coordinates.latitude},${selectedPlace.coordinates.longitude}`;
+            
+            if (navigator.share) {
+                navigator.share({
+                    title: selectedPlace.name,
+                    text: text,
+                    url: url
+                });
+            } else {
+                copyCoordinates();
+            }
+        }
+        
+        // Show QR Code modal
+        function showQRCode() {
+            if (!selectedPlace || !selectedPlace.hasCoordinates) return;
+            
+            const lat = selectedPlace.coordinates.latitude;
+            const lng = selectedPlace.coordinates.longitude;
+            const mapsUrl = `https://www.google.com/maps?q=${lat},${lng}`;
+            
+            document.getElementById('qr-coords').textContent = 
+                `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+            
+            // Generate QR code
+            const qrDiv = document.getElementById('qrcode');
+            qrDiv.innerHTML = '';
+            
+            // Simple QR generation (you might want to use a library)
+            qrDiv.innerHTML = `
+                <div style="background: #f0f0f0; padding: 20px; display: inline-block; border-radius: 10px;">
+                    <div style="font-size: 48px; color: #333;">
+                        <i class="fas fa-map-marker-alt"></i>
+                    </div>
+                    <div style="margin-top: 10px; font-family: monospace; font-size: 12px;">
+                        ${selectedPlace.name.substring(0, 20)}
+                    </div>
+                </div>
+            `;
+            
+            document.getElementById('qrModal').style.display = 'flex';
+        }
+        
+        // Copy QR image (placeholder)
+        function copyQRImage() {
+            showToast('QR Code saved to images', 'info');
+        }
+        
+        // Close modal
+        function closeModal() {
+            document.getElementById('qrModal').style.display = 'none';
         }
         
         // Setup search functionality
@@ -458,23 +992,70 @@
             const searchInput = document.getElementById('searchInput');
             searchInput.disabled = false;
             searchInput.placeholder = `Search ${allPlaces.length} places...`;
-            searchInput.focus();
             
+            // Debounced search
+            let timeout;
             searchInput.addEventListener('input', function() {
-                const query = this.value.toLowerCase().trim();
-                
-                if (!query) {
-                    renderPlaces(allPlaces);
-                    return;
-                }
-                
-                const filtered = allPlaces.filter(place => {
-                    const searchText = (place.name + ' ' + place.description).toLowerCase();
-                    return searchText.includes(query);
-                });
-                
-                renderPlaces(filtered);
+                clearTimeout(timeout);
+                timeout = setTimeout(() => {
+                    const query = this.value.toLowerCase().trim();
+                    
+                    if (!query) {
+                        renderPlaces(allPlaces);
+                        return;
+                    }
+                    
+                    const filtered = allPlaces.filter(place => {
+                        const searchText = (place.name + ' ' + place.description).toLowerCase();
+                        return searchText.includes(query);
+                    });
+                    
+                    renderPlaces(filtered);
+                    
+                    // Clear selection if filtered out
+                    if (selectedPlace && !filtered.find(p => p.id === selectedPlace.id)) {
+                        selectedPlace = null;
+                        updateSelectedInfo();
+                    }
+                }, 300);
             });
+            
+            // Clear button (optional)
+            searchInput.insertAdjacentHTML('afterend', `
+                <button onclick="clearSearch()" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; color: #666; cursor: pointer; display: none;" id="clearSearchBtn">
+                    <i class="fas fa-times"></i>
+                </button>
+            `);
+        }
+        
+        // Clear search
+        function clearSearch() {
+            document.getElementById('searchInput').value = '';
+            renderPlaces(allPlaces);
+            document.getElementById('clearSearchBtn').style.display = 'none';
+        }
+        
+        // Show toast notification
+        function showToast(message, type = 'success') {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.style.display = 'block';
+            toast.style.background = type === 'error' ? '#dc3545' : 
+                                   type === 'info' ? '#17a2b8' : '#34a853';
+            
+            setTimeout(() => {
+                toast.style.display = 'none';
+            }, 3000);
+        }
+        
+        // Show error
+        function showError(message) {
+            document.getElementById('searchResults').innerHTML = `
+                <div style="background: #f8d7da; color: #721c24; padding: 20px; border-radius: 10px;">
+                    <h3><i class="fas fa-exclamation-triangle"></i> Error</h3>
+                    <p>${message}</p>
+                </div>
+            `;
         }
         
         // Escape HTML
@@ -485,17 +1066,20 @@
         }
         
         // Keyboard shortcuts
-        document.addEventListener('keydown', function(event) {
-            // Ctrl/Cmd + F focuses search
-            if ((event.ctrlKey || event.metaKey) && event.key === 'f') {
-                event.preventDefault();
+        document.addEventListener('keydown', function(e) {
+            // Ctrl/Cmd + F to focus search
+            if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+                e.preventDefault();
                 document.getElementById('searchInput').focus();
             }
             
-            // Escape clears selection
-            if (event.key === 'Escape') {
-                document.getElementById('coordinate-display').style.display = 'none';
+            // Escape to clear selection
+            if (e.key === 'Escape') {
                 selectedPlace = null;
+                updateSelectedInfo();
+                document.querySelectorAll('.place-card.selected').forEach(card => {
+                    card.classList.remove('selected');
+                });
             }
         });
     </script>
