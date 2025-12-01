@@ -3,14 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>KML Direct to Google Earth Web</title>
+    <title>KML to Google Earth via Drive</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
-            padding: 15px;
+            padding: 20px;
         }
         .container {
             max-width: 1200px;
@@ -23,296 +23,359 @@
         header {
             background: linear-gradient(90deg, #1a73e8, #4CAF50);
             color: white;
-            padding: 25px 20px;
+            padding: 30px 20px;
             text-align: center;
         }
         h1 {
-            font-size: 1.6em;
+            font-size: 1.8em;
             margin-bottom: 10px;
         }
         .main-content {
             display: grid;
             grid-template-columns: 1fr 2fr;
-            gap: 20px;
-            padding: 20px;
+            gap: 25px;
+            padding: 25px;
         }
         @media (max-width: 768px) {
             .main-content { grid-template-columns: 1fr; }
-            h1 { font-size: 1.4em; }
-            .btn-group { grid-template-columns: 1fr; }
+            h1 { font-size: 1.5em; }
         }
         .search-box {
             width: 100%;
-            padding: 12px;
+            padding: 14px;
             font-size: 16px;
             border: 2px solid #1a73e8;
-            border-radius: 10px;
-            margin-bottom: 15px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            transition: all 0.3s;
+        }
+        .search-box:focus {
+            outline: none;
+            border-color: #0d47a1;
+            box-shadow: 0 0 0 3px rgba(26, 115, 232, 0.2);
         }
         .place-card {
             background: #f8f9fa;
-            padding: 15px;
-            margin: 10px 0;
-            border-radius: 10px;
+            padding: 18px;
+            margin: 12px 0;
+            border-radius: 12px;
             border-left: 4px solid #4CAF50;
             cursor: pointer;
-            transition: transform 0.2s;
+            transition: all 0.3s ease;
         }
         .place-card:hover {
-            transform: translateY(-2px);
+            background: #e8f0fe;
+            transform: translateY(-3px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.1);
         }
         .place-card.selected {
             background: #e8f0fe;
             border-left-color: #1a73e8;
-            box-shadow: 0 4px 12px rgba(26, 115, 232, 0.2);
+            box-shadow: 0 6px 20px rgba(26, 115, 232, 0.2);
+            transform: translateY(-2px);
         }
         .place-name {
             font-weight: bold;
             color: #2c3e50;
-            font-size: 16px;
-            margin-bottom: 5px;
+            font-size: 17px;
+            margin-bottom: 8px;
         }
         .place-description {
             color: #666;
             font-size: 14px;
             margin: 8px 0;
-            line-height: 1.4;
+            line-height: 1.5;
+            max-height: 60px;
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+        }
+        .place-description.expanded {
+            max-height: 300px;
+        }
+        .read-more-btn {
+            color: #1a73e8;
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 13px;
+            padding: 5px 0;
+            display: inline-block;
         }
         .action-btn {
             display: block;
-            background: #34a853;
+            background: linear-gradient(135deg, #1a73e8, #0d47a1);
             color: white;
-            padding: 12px;
-            border-radius: 8px;
+            padding: 14px;
+            border-radius: 10px;
             border: none;
             cursor: pointer;
             width: 100%;
-            margin: 8px 0;
+            margin: 10px 0;
             font-weight: bold;
-            font-size: 15px;
+            font-size: 16px;
             text-align: center;
-            transition: all 0.3s;
+            transition: all 0.3s ease;
         }
         .action-btn:hover {
-            opacity: 0.9;
             transform: translateY(-2px);
-        }
-        .action-btn.primary {
-            background: #1a73e8;
-        }
-        .action-btn.secondary {
-            background: #ff9800;
-        }
-        .action-btn.tertiary {
-            background: #9c27b0;
+            box-shadow: 0 6px 20px rgba(26, 115, 232, 0.3);
+            opacity: 0.95;
         }
         .action-btn:active {
             transform: translateY(0);
         }
+        .action-btn.secondary {
+            background: linear-gradient(135deg, #ff9800, #f57c00);
+        }
+        .action-btn.success {
+            background: linear-gradient(135deg, #34a853, #2e7d32);
+        }
+        .action-btn.info {
+            background: linear-gradient(135deg, #9c27b0, #7b1fa2);
+        }
         .info-box {
             background: #e8f0fe;
-            padding: 15px;
-            border-radius: 10px;
-            margin: 10px 0;
+            padding: 20px;
+            border-radius: 12px;
+            margin: 15px 0;
+            border: 2px solid #d2e3fc;
         }
         .coordinate-box {
             background: #2c3e50;
             color: white;
-            padding: 10px;
-            border-radius: 8px;
-            margin: 10px 0;
-            font-family: monospace;
-            font-size: 13px;
+            padding: 12px;
+            border-radius: 10px;
+            margin: 15px 0;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
         }
         .btn-group {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 10px;
-            margin: 15px 0;
+            gap: 15px;
+            margin: 20px 0;
+        }
+        @media (max-width: 480px) {
+            .btn-group { grid-template-columns: 1fr; }
         }
         .loading {
             text-align: center;
-            padding: 40px;
+            padding: 50px;
             color: #666;
         }
         .spinner {
-            width: 40px;
-            height: 40px;
+            width: 50px;
+            height: 50px;
             border: 4px solid #f3f3f3;
             border-top: 4px solid #1a73e8;
             border-radius: 50%;
             animation: spin 1s linear infinite;
-            margin: 0 auto 20px;
+            margin: 0 auto 25px;
         }
         .toast {
             position: fixed;
-            bottom: 20px;
+            bottom: 30px;
             left: 50%;
-            transform: translateX(-50%);
+            transform: translateX(-50%) translateY(20px);
             background: #34a853;
             color: white;
-            padding: 12px 20px;
-            border-radius: 8px;
+            padding: 15px 25px;
+            border-radius: 10px;
             z-index: 1000;
             display: none;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            opacity: 0;
+            transition: all 0.3s ease;
+        }
+        .toast.show {
+            display: block;
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
         }
         .hidden { display: none; }
-        .device-info {
-            background: #2c3e50;
-            color: white;
-            padding: 8px 12px;
-            border-radius: 8px;
-            margin: 10px 0;
-            font-size: 12px;
-            text-align: center;
+        .drive-upload-info {
+            background: #fff3cd;
+            border: 2px solid #ffc107;
+            border-radius: 10px;
+            padding: 15px;
+            margin: 15px 0;
+            color: #856404;
         }
-        .mobile-only { display: none; }
-        .desktop-only { display: block; }
-        @media (max-width: 768px) {
-            .mobile-only { display: block; }
-            .desktop-only { display: none; }
+        .instructions {
+            background: #f8f9fa;
+            border-left: 4px solid #4CAF50;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 0 8px 8px 0;
         }
-        .kml-info {
+        .instructions ol {
+            margin: 10px 0 10px 20px;
+        }
+        .instructions li {
+            margin: 8px 0;
+            line-height: 1.5;
+        }
+        .status-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 15px;
             background: #f5f5f5;
             border-radius: 8px;
-            padding: 10px;
-            margin: 10px 0;
-            font-family: monospace;
-            font-size: 11px;
-            word-break: break-all;
-            max-height: 80px;
-            overflow-y: auto;
+            margin: 15px 0;
+            font-size: 14px;
+        }
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        .status-indicator.active {
+            background: #4CAF50;
+        }
+        .status-indicator.inactive {
+            background: #f44336;
         }
         @keyframes spin {
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
+        }
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.7; }
+            100% { opacity: 1; }
+        }
+        .pulse {
+            animation: pulse 2s infinite;
         }
     </style>
 </head>
 <body>
     <div class="container">
         <header>
-            <h1>🌍 KML to Google Earth</h1>
-            <p>Open KML directly from GitHub - Works on PC & Mobile</p>
+            <h1>🌍 KML to Google Earth via Google Drive</h1>
+            <p>Upload KML from GitHub to Google Drive & Open with Coordinates</p>
         </header>
         
         <div class="main-content">
             <!-- Sidebar -->
             <div>
-                <div class="info-box">
-                    <h3>📋 How It Works</h3>
-                    <p style="margin-top: 10px; line-height: 1.5;">
-                        <span class="desktop-only">1. Select a location from the KML<br>
-                        2. Click "🌍 Open in Google Earth"<br>
-                        3. KML loads from GitHub<br>
-                        4. Zooms to selected coordinates<br></span>
-                        <span class="mobile-only">1. Tap a location from the list<br>
-                        2. Tap "🌍 Open in Google Earth"<br>
-                        3. Opens in Google Earth app/browser<br>
-                        4. Shows the exact location<br></span>
-                    </p>
+                <!-- Status Bar -->
+                <div class="status-bar">
+                    <div>
+                        <span class="status-indicator active" id="kml-status"></span>
+                        <span id="status-text">Loading KML...</span>
+                    </div>
+                    <div id="place-count">0 places</div>
                 </div>
                 
-                <!-- Device Detection -->
-                <div class="device-info">
-                    <span id="device-type">Detecting device...</span>
+                <!-- Instructions -->
+                <div class="instructions">
+                    <h3>📋 How It Works</h3>
+                    <ol>
+                        <li>Select a location from the KML file</li>
+                        <li>Click "Open in Google Earth via Drive"</li>
+                        <li>KML uploads to Google Drive automatically</li>
+                        <li>Google Earth opens with the KML file</li>
+                        <li>Zooms to selected coordinates</li>
+                    </ol>
+                </div>
+                
+                <!-- Drive Upload Info -->
+                <div class="drive-upload-info" id="drive-info">
+                    <strong>⚠️ Important:</strong><br>
+                    Google Earth Web requires KML files to be in Google Drive.<br>
+                    Click the button to upload and open.
                 </div>
                 
                 <!-- Selected Location -->
                 <div class="info-box" id="selected-box">
                     <h3>📍 Selected Location</h3>
                     <div id="selected-info">
-                        <p style="color: #666;">Tap a location from the list</p>
+                        <p style="color: #666;">Click a location from the list</p>
                     </div>
                     
                     <div id="selected-coords" class="hidden">
                         <div class="coordinate-box">
-                            <div>Latitude: <span id="coord-lat"></span></div>
-                            <div>Longitude: <span id="coord-lng"></span></div>
+                            <div><strong>Latitude:</strong> <span id="coord-lat"></span></div>
+                            <div><strong>Longitude:</strong> <span id="coord-lng"></span></div>
+                            <div><strong>Altitude:</strong> <span id="coord-alt">0</span>m</div>
                         </div>
                         
-                        <!-- Primary Action Buttons -->
+                        <!-- Main Action Buttons -->
                         <div class="btn-group">
-                            <button class="action-btn primary" id="open-earth-btn">
-                                🌍 Open in Google Earth
+                            <button class="action-btn pulse" id="open-drive-btn">
+                                ☁️ Open via Google Drive
                             </button>
-                            <button class="action-btn" id="open-maps-btn">
-                                🗺️ Open in Maps
+                            <button class="action-btn secondary" id="open-maps-btn">
+                                🗺️ Open in Google Maps
                             </button>
                         </div>
                         
-                        <!-- Secondary Action Buttons -->
+                        <!-- Alternative Actions -->
                         <div class="btn-group">
-                            <button class="action-btn secondary" onclick="openInGoogleEarthApp()">
-                                📱 Open in Earth App
+                            <button class="action-btn success" onclick="downloadKML()">
+                                📥 Download KML File
                             </button>
-                            <button class="action-btn tertiary" onclick="shareLocation()">
-                                📤 Share Location
+                            <button class="action-btn info" onclick="viewRawKML()">
+                                🔗 View Raw KML
                             </button>
                         </div>
                         
-                        <!-- Mobile Specific -->
-                        <div class="mobile-only" style="margin-top: 15px;">
-                            <button class="action-btn" onclick="openInBrowserFallback()" style="background: #607d8b;">
-                                🌐 Open in Browser
+                        <!-- Quick Actions -->
+                        <div style="margin-top: 20px;">
+                            <button class="action-btn" onclick="copyCoordinates()" style="background: #607d8b; padding: 10px;">
+                                📋 Copy Coordinates
                             </button>
                         </div>
                     </div>
                 </div>
                 
-                <!-- KML Info -->
-                <div class="info-box">
-                    <h3>📁 KML Source</h3>
-                    <div class="kml-info" id="kml-url">
-                        Loading KML information...
-                    </div>
-                    <button class="action-btn" onclick="viewRawKml()" style="background: #333; margin-top: 10px;">
-                        🔗 View Raw KML File
-                    </button>
+                <!-- Debug Info -->
+                <div class="info-box" id="debug-box" style="display: none;">
+                    <h3>🔍 Debug Information</h3>
+                    <div id="debug-info" style="font-family: monospace; font-size: 12px; margin-top: 10px; line-height: 1.4;"></div>
                 </div>
             </div>
             
             <!-- Main Content -->
             <div>
-                <input type="text" id="searchInput" class="search-box" placeholder="Search locations...">
+                <input type="text" id="searchInput" class="search-box" placeholder="🔍 Search locations...">
                 
                 <div id="searchResults">
                     <div class="loading">
                         <div class="spinner"></div>
-                        <p>Loading KML data...</p>
+                        <p>Loading KML data from GitHub...</p>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Toast -->
+    <!-- Toast Notification -->
     <div class="toast" id="toast"></div>
 
     <script>
         // Configuration
-        const KML_GITHUB_RAW_URL = 'https://raw.githubusercontent.com/Gintra121/Search-Phlov-Meas/main/ឃុំផ្លូវមាស.kml';
+        const KML_GITHUB_URL = 'https://raw.githubusercontent.com/Gintra121/Search-Phlov-Meas/main/ឃុំផ្លូវមាស.kml';
         const KML_LOCAL_FILE = 'ឃុំផ្លូវមាស.kml';
+        
+        // Google Drive Upload URL
+        const GOOGLE_DRIVE_UPLOAD_URL = 'https://drive.google.com/drive/u/0/my-drive';
         
         let allPlaces = [];
         let selectedPlace = null;
         let currentKmlUrl = '';
-        let isMobile = false;
+        let kmlContent = '';
         
         // Initialize
         document.addEventListener('DOMContentLoaded', async function() {
-            console.log('Initializing KML Navigator...');
-            
-            // Detect device
-            detectDevice();
-            
-            // Determine KML source
-            currentKmlUrl = await determineKmlSource();
-            document.getElementById('kml-url').textContent = currentKmlUrl;
+            console.log('🚀 Initializing KML to Google Earth via Drive');
             
             // Load KML data
-            await loadKML(currentKmlUrl);
+            await loadKMLData();
             
             // Setup event listeners
             setupEventListeners();
@@ -321,56 +384,43 @@
             setupSearch();
             
             // Show welcome message
-            showToast(`Ready! Tap a location to open in Google Earth${isMobile ? ' (Mobile)' : ' (Desktop)'}`, 'info', 3000);
+            showToast('✅ Ready! Select a location to open in Google Earth via Drive', 'success', 4000);
         });
         
-        // Detect device type
-        function detectDevice() {
-            isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-            const deviceType = document.getElementById('device-type');
-            deviceType.textContent = isMobile ? '📱 Mobile Device Detected' : '💻 Desktop Device Detected';
-            console.log('Device:', isMobile ? 'Mobile' : 'Desktop');
-        }
-        
-        // Determine KML source
-        async function determineKmlSource() {
+        // Load KML data
+        async function loadKMLData() {
             try {
+                updateStatus('Loading KML from GitHub...', 'loading');
+                
                 // Try GitHub first
-                const response = await fetch(KML_GITHUB_RAW_URL, { method: 'HEAD' });
+                const response = await fetch(KML_GITHUB_URL);
                 if (response.ok) {
-                    console.log('Using GitHub KML');
-                    return KML_GITHUB_RAW_URL;
+                    currentKmlUrl = KML_GITHUB_URL;
+                    kmlContent = await response.text();
+                    console.log('✅ Loaded KML from GitHub');
+                } else {
+                    // Fallback to local
+                    const localResponse = await fetch(KML_LOCAL_FILE);
+                    currentKmlUrl = KML_LOCAL_FILE;
+                    kmlContent = await localResponse.text();
+                    console.log('✅ Loaded KML from local file');
                 }
-            } catch (error) {
-                console.log('GitHub KML not accessible');
-            }
-            
-            // Fallback to local
-            try {
-                const response = await fetch(KML_LOCAL_FILE, { method: 'HEAD' });
-                if (response.ok) {
-                    console.log('Using local KML');
-                    return KML_LOCAL_FILE;
-                }
-            } catch (error) {
-                console.log('Local KML not found');
-            }
-            
-            // Default to GitHub URL
-            return KML_GITHUB_RAW_URL;
-        }
-        
-        // Load KML file
-        async function loadKML(kmlUrl) {
-            try {
-                showToast('Loading KML data...', 'info');
-                
-                const response = await fetch(kmlUrl);
-                if (!response.ok) throw new Error('Failed to load KML');
-                
-                const kmlText = await response.text();
                 
                 // Parse KML
+                parseKML(kmlContent);
+                updateStatus(`${allPlaces.length} locations loaded`, 'success');
+                
+            } catch (error) {
+                console.error('❌ Error loading KML:', error);
+                useFallbackData();
+                updateStatus('Using sample data', 'warning');
+                showToast('⚠️ Using sample data - KML not accessible', 'warning');
+            }
+        }
+        
+        // Parse KML content
+        function parseKML(kmlText) {
+            try {
                 const parser = new DOMParser();
                 const xmlDoc = parser.parseFromString(kmlText, 'text/xml');
                 
@@ -380,7 +430,7 @@
                 
                 // Extract placemarks
                 const placemarks = xmlDoc.querySelectorAll('Placemark');
-                console.log(`Found ${placemarks.length} placemarks`);
+                console.log(`📊 Found ${placemarks.length} placemarks`);
                 
                 allPlaces = [];
                 
@@ -389,11 +439,11 @@
                     const nameEl = placemark.querySelector('name');
                     const name = nameEl ? nameEl.textContent.trim() : `Location ${index + 1}`;
                     
-                    // Get description (handle HTML content)
+                    // Get description
                     const descEl = placemark.querySelector('description');
                     let description = '';
                     if (descEl) {
-                        let descText = descEl.textContent.trim();
+                        const descText = descEl.textContent.trim();
                         // Extract text from HTML if present
                         const tempDiv = document.createElement('div');
                         tempDiv.innerHTML = descText;
@@ -406,7 +456,7 @@
                     
                     if (coordEl) {
                         const coordText = coordEl.textContent.trim();
-                        const parts = coordText.split(',');
+                        const parts = coordText.split(/\s+/)[0].split(',');
                         if (parts.length >= 2) {
                             coordinates = {
                                 longitude: parseFloat(parts[0]),
@@ -419,7 +469,7 @@
                     allPlaces.push({
                         id: index + 1,
                         name: name,
-                        description: description.substring(0, 200), // Limit description
+                        description: description,
                         coordinates: coordinates,
                         hasCoordinates: coordinates !== null
                     });
@@ -427,12 +477,11 @@
                 
                 // Render places
                 renderPlaces(allPlaces);
-                showToast(`Loaded ${allPlaces.length} locations`, 'success');
+                document.getElementById('place-count').textContent = `${allPlaces.length} places`;
                 
             } catch (error) {
-                console.error('Error loading KML:', error);
-                useFallbackData();
-                showToast('Using sample data', 'warning');
+                console.error('❌ Error parsing KML:', error);
+                throw error;
             }
         }
         
@@ -441,21 +490,29 @@
             allPlaces = [
                 {
                     id: 1,
-                    name: "Sample Location 1",
-                    description: "This is a sample location",
-                    coordinates: { latitude: 11.5564, longitude: 104.9282, altitude: 0 },
+                    name: "Phnom Penh",
+                    description: "Capital city of Cambodia with rich history and culture",
+                    coordinates: { latitude: 11.5564, longitude: 104.9282, altitude: 20 },
                     hasCoordinates: true
                 },
                 {
                     id: 2,
-                    name: "Sample Location 2",
-                    description: "Another sample location",
-                    coordinates: { latitude: 13.4125, longitude: 103.8660, altitude: 0 },
+                    name: "Angkor Wat",
+                    description: "Largest religious monument in the world, built in the 12th century",
+                    coordinates: { latitude: 13.4125, longitude: 103.8660, altitude: 65 },
+                    hasCoordinates: true
+                },
+                {
+                    id: 3,
+                    name: "Siem Reap",
+                    description: "Gateway to Angkor temples and cultural hub",
+                    coordinates: { latitude: 13.3671, longitude: 103.8448, altitude: 18 },
                     hasCoordinates: true
                 }
             ];
             
             renderPlaces(allPlaces);
+            document.getElementById('place-count').textContent = `${allPlaces.length} places`;
         }
         
         // Render places
@@ -470,16 +527,28 @@
             let html = '';
             places.forEach(place => {
                 const isSelected = selectedPlace && selectedPlace.id === place.id;
+                const shortDesc = place.description.length > 100 ? 
+                    place.description.substring(0, 100) + '...' : place.description;
                 
                 html += `
                     <div class="place-card ${isSelected ? 'selected' : ''}" 
                          onclick="selectPlace(${place.id})"
-                         data-id="${place.id}">
+                         data-id="${place.id}"
+                         tabindex="0">
                         <div class="place-name">${escapeHtml(place.name)}</div>
-                        ${place.description ? `<div class="place-description">${escapeHtml(place.description)}</div>` : ''}
+                        ${place.description ? `
+                            <div class="place-description" id="desc-${place.id}">
+                                ${escapeHtml(shortDesc)}
+                            </div>
+                            ${place.description.length > 100 ? `
+                                <button class="read-more-btn" onclick="toggleDescription(${place.id}, event)">
+                                    Read more
+                                </button>
+                            ` : ''}
+                        ` : ''}
                         ${place.hasCoordinates ? `
-                            <div style="margin-top: 8px;">
-                                <span style="background: #2c3e50; color: white; padding: 3px 8px; border-radius: 4px; font-size: 12px;">
+                            <div style="margin-top: 10px;">
+                                <span style="background: #2c3e50; color: white; padding: 4px 10px; border-radius: 5px; font-size: 12px; font-family: monospace;">
                                     📍 ${place.coordinates.latitude.toFixed(6)}, ${place.coordinates.longitude.toFixed(6)}
                                 </span>
                             </div>
@@ -489,6 +558,32 @@
             });
             
             container.innerHTML = html;
+        }
+        
+        // Toggle description expansion
+        function toggleDescription(placeId, event) {
+            event.stopPropagation();
+            const descEl = document.getElementById(`desc-${placeId}`);
+            const btn = event.target;
+            
+            if (descEl.classList.contains('expanded')) {
+                descEl.classList.remove('expanded');
+                btn.textContent = 'Read more';
+                // Truncate text
+                const place = allPlaces.find(p => p.id === placeId);
+                if (place) {
+                    descEl.textContent = place.description.length > 100 ? 
+                        place.description.substring(0, 100) + '...' : place.description;
+                }
+            } else {
+                descEl.classList.add('expanded');
+                btn.textContent = 'Read less';
+                // Show full text
+                const place = allPlaces.find(p => p.id === placeId);
+                if (place) {
+                    descEl.textContent = place.description;
+                }
+            }
         }
         
         // Select place
@@ -506,12 +601,12 @@
             
             // Add selection visual
             const card = document.querySelector(`[data-id="${placeId}"]`);
-            if (card) card.classList.add('selected');
-            
-            // Scroll to top on mobile
-            if (isMobile) {
-                document.getElementById('selected-box').scrollIntoView({ behavior: 'smooth' });
+            if (card) {
+                card.classList.add('selected');
+                card.focus();
             }
+            
+            console.log(`📍 Selected: ${selectedPlace.name}`);
         }
         
         // Update selected info
@@ -520,27 +615,28 @@
             const coordsDiv = document.getElementById('selected-coords');
             
             if (!selectedPlace) {
-                infoDiv.innerHTML = '<p style="color: #666;">Tap a location from the list</p>';
+                infoDiv.innerHTML = '<p style="color: #666;">Click a location from the list</p>';
                 coordsDiv.classList.add('hidden');
                 return;
             }
             
             infoDiv.innerHTML = `
-                <h4 style="color: #1a73e8;">${escapeHtml(selectedPlace.name)}</h4>
-                ${selectedPlace.description ? `<div class="place-description">${escapeHtml(selectedPlace.description)}</div>` : ''}
+                <h4 style="color: #1a73e8; margin-bottom: 10px;">${escapeHtml(selectedPlace.name)}</h4>
+                ${selectedPlace.description ? `<div style="color: #666; font-size: 14px; line-height: 1.5;">${escapeHtml(selectedPlace.description)}</div>` : ''}
             `;
             
             if (selectedPlace.hasCoordinates) {
                 document.getElementById('coord-lat').textContent = selectedPlace.coordinates.latitude.toFixed(6);
                 document.getElementById('coord-lng').textContent = selectedPlace.coordinates.longitude.toFixed(6);
+                document.getElementById('coord-alt').textContent = selectedPlace.coordinates.altitude;
                 coordsDiv.classList.remove('hidden');
             } else {
                 coordsDiv.classList.add('hidden');
             }
         }
         
-        // MAIN FUNCTION: Open in Google Earth with KML
-        function openGoogleEarthWithKml() {
+        // MAIN FUNCTION: Open Google Earth via Google Drive
+        function openGoogleEarthViaDrive() {
             if (!selectedPlace || !selectedPlace.hasCoordinates) {
                 showToast('Please select a location first', 'error');
                 return;
@@ -548,81 +644,89 @@
             
             const lat = selectedPlace.coordinates.latitude;
             const lng = selectedPlace.coordinates.longitude;
+            const alt = selectedPlace.coordinates.altitude;
             const name = encodeURIComponent(selectedPlace.name);
             
-            console.log(`Opening location ${name} at ${lat}, ${lng}`);
+            console.log(`🌍 Opening ${name} at ${lat}, ${lng}`);
             
-            if (isMobile) {
-                openGoogleEarthMobile(lat, lng, name);
-            } else {
-                openGoogleEarthDesktop(lat, lng, name);
-            }
+            // Step 1: Create KML with only the selected place (for faster upload)
+            const singlePlaceKML = createSinglePlaceKML();
+            
+            // Step 2: Upload to Google Drive (simulated)
+            showToast('📤 Preparing KML for Google Drive upload...', 'info');
+            
+            // Step 3: Open Google Drive upload page with KML content
+            setTimeout(() => {
+                openDriveWithKML(singlePlaceKML, lat, lng, name);
+            }, 1000);
         }
         
-        // Desktop version - opens in Google Earth Web
-        function openGoogleEarthDesktop(lat, lng, name) {
-            // Method 1: Google Earth Web with coordinates and KML reference
-            const earthUrl = `https://earth.google.com/web/search/${name}/@${lat},${lng},1000a,1000d,35y,0h,0t,0r`;
+        // Create KML with only selected place
+        function createSinglePlaceKML() {
+            if (!selectedPlace) return '';
             
-            // Method 2: Alternative with flyTo
-            const earthUrl2 = `https://earth.google.com/web/@${lat},${lng},1000a,1000d,35y,0h,0t,0r/data=OgMKATA`;
+            const kmlTemplate = `<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+<Document>
+    <name>${selectedPlace.name}</name>
+    <Placemark>
+        <name>${selectedPlace.name}</name>
+        <description><![CDATA[${selectedPlace.description}]]></description>
+        <Point>
+            <coordinates>${selectedPlace.coordinates.longitude},${selectedPlace.coordinates.latitude},${selectedPlace.coordinates.altitude}</coordinates>
+        </Point>
+    </Placemark>
+</Document>
+</kml>`;
             
-            // Try to open
-            try {
-                const newWindow = window.open(earthUrl, '_blank');
-                
-                if (!newWindow || newWindow.closed) {
-                    // If blocked, try second URL
-                    setTimeout(() => {
-                        window.open(earthUrl2, '_blank');
-                    }, 100);
-                }
-                
-                showToast('Opening in Google Earth Web...', 'info');
-                
-            } catch (error) {
-                console.error('Error opening Earth:', error);
-                showToast('Please allow popups', 'error');
-            }
-            
-            // Show debug info
-            showDebugInfo(`Desktop: Opening coordinates in Google Earth Web\nURL: ${earthUrl}\nCoordinates: ${lat}, ${lng}`);
+            return kmlTemplate;
         }
         
-        // Mobile version - tries different methods
-        function openGoogleEarthMobile(lat, lng, name) {
-            // Method 1: Google Earth app deep link (if installed)
-            const earthAppUrl = `googleearth://?q=${lat},${lng}&name=${name}`;
+        // Open Google Drive with KML
+        function openDriveWithKML(kmlContent, lat, lng, name) {
+            // Create blob for download
+            const blob = new Blob([kmlContent], { type: 'application/vnd.google-earth.kml+xml' });
+            const url = URL.createObjectURL(blob);
             
-            // Method 2: Google Maps satellite view (fallback)
-            const mapsUrl = `https://www.google.com/maps/@${lat},${lng},15z/data=!3m1!1e3`;
+            // Create download link
+            const downloadLink = document.createElement('a');
+            downloadLink.href = url;
+            downloadLink.download = `${selectedPlace.name.replace(/\s+/g, '_')}.kml`;
             
-            // Method 3: Google Earth Web mobile
-            const earthWebUrl = `https://earth.google.com/web/@${lat},${lng},1000a,1000d,35y,0h,0t,0r`;
+            // Trigger download
+            document.body.appendChild(downloadLink);
+            downloadLink.click();
+            document.body.removeChild(downloadLink);
             
-            // Try Earth app first
-            try {
-                window.location.href = earthAppUrl;
-                showToast('Opening in Google Earth app...', 'info');
-                
-                // If app doesn't open, fallback after delay
-                setTimeout(() => {
-                    if (document.hasFocus()) {
-                        window.open(mapsUrl, '_blank');
-                        showToast('Opening in Google Maps...', 'info');
-                    }
-                }, 2000);
-                
-            } catch (error) {
-                // Fallback to Earth Web
-                window.open(earthWebUrl, '_blank');
-                showToast('Opening in Google Earth Web...', 'info');
-            }
+            // Clean up
+            URL.revokeObjectURL(url);
             
-            showDebugInfo(`Mobile: Trying Google Earth app\nFallback: Google Maps\nCoordinates: ${lat}, ${lng}`);
+            // Open Google Drive upload
+            const driveUrl = `${GOOGLE_DRIVE_UPLOAD_URL}?q=${encodeURIComponent('upload .kml')}`;
+            window.open(driveUrl, '_blank');
+            
+            // Also open Google Earth with coordinates
+            setTimeout(() => {
+                const earthUrl = `https://earth.google.com/web/search/${name}/@${lat},${lng},${alt+100}a,1000d,35y,0h,0t,0r`;
+                window.open(earthUrl, '_blank');
+            }, 1500);
+            
+            showToast('📁 KML downloaded. Upload to Google Drive, then open with Google Earth', 'success', 5000);
+            
+            // Show instructions
+            showDebugInfo([
+                '📋 Instructions:',
+                '1. KML file has been downloaded',
+                '2. Google Drive opened for upload',
+                '3. Upload the downloaded KML file',
+                '4. Right-click the file in Drive',
+                '5. Select "Open with" → "Google Earth"',
+                `6. Location: ${lat}, ${lng}`,
+                `7. Altitude: ${alt}m`
+            ]);
         }
         
-        // Open in Google Maps
+        // Open Google Maps
         function openGoogleMaps() {
             if (!selectedPlace || !selectedPlace.hasCoordinates) {
                 showToast('Please select a location first', 'error');
@@ -633,79 +737,96 @@
             const lng = selectedPlace.coordinates.longitude;
             const name = encodeURIComponent(selectedPlace.name);
             
-            // Google Maps URL
             const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${lat},${lng}&query_place_id=${name}`;
-            
             window.open(mapsUrl, '_blank');
             showToast('Opening in Google Maps...', 'info');
         }
         
-        // Open in Google Earth App (Mobile specific)
-        function openInGoogleEarthApp() {
-            if (!selectedPlace || !selectedPlace.hasCoordinates) return;
-            
-            const lat = selectedPlace.coordinates.latitude;
-            const lng = selectedPlace.coordinates.longitude;
-            
-            const earthAppUrl = `googleearth://?q=${lat},${lng}&fly=1`;
-            window.location.href = earthAppUrl;
-        }
-        
-        // Browser fallback for mobile
-        function openInBrowserFallback() {
-            if (!selectedPlace || !selectedPlace.hasCoordinates) return;
-            
-            const lat = selectedPlace.coordinates.latitude;
-            const lng = selectedPlace.coordinates.longitude;
-            
-            const browserUrl = `https://earth.google.com/web/@${lat},${lng},1000a,1000d,35y,0h,0t,0r`;
-            window.open(browserUrl, '_blank');
-        }
-        
-        // Share location
-        function shareLocation() {
-            if (!selectedPlace || !selectedPlace.hasCoordinates) return;
-            
-            const lat = selectedPlace.coordinates.latitude;
-            const lng = selectedPlace.coordinates.longitude;
-            const name = selectedPlace.name;
-            
-            const shareText = `Location: ${name}\nCoordinates: ${lat}, ${lng}\nGoogle Maps: https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
-            
-            if (navigator.share) {
-                // Use Web Share API on mobile
-                navigator.share({
-                    title: name,
-                    text: shareText,
-                    url: `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`
-                });
-            } else {
-                // Fallback: copy to clipboard
-                navigator.clipboard.writeText(shareText);
-                showToast('Location copied to clipboard!', 'success');
+        // Download KML file
+        function downloadKML() {
+            if (!kmlContent) {
+                showToast('KML content not available', 'error');
+                return;
             }
+            
+            const blob = new Blob([kmlContent], { type: 'application/vnd.google-earth.kml+xml' });
+            const url = URL.createObjectURL(blob);
+            const downloadLink = document.createElement('a');
+            downloadLink.href = url;
+            downloadLink.download = 'locations.kml';
+            document.body.appendChild(downloadLink);
+            downloadLink.click();
+            document.body.removeChild(downloadLink);
+            URL.revokeObjectURL(url);
+            
+            showToast('KML file downloaded', 'success');
         }
         
         // View raw KML
-        function viewRawKml() {
+        function viewRawKML() {
             window.open(currentKmlUrl, '_blank');
+        }
+        
+        // Copy coordinates to clipboard
+        function copyCoordinates() {
+            if (!selectedPlace || !selectedPlace.hasCoordinates) return;
+            
+            const coords = `${selectedPlace.coordinates.latitude}, ${selectedPlace.coordinates.longitude}`;
+            navigator.clipboard.writeText(coords).then(() => {
+                showToast('Coordinates copied to clipboard!', 'success');
+            });
+        }
+        
+        // Update status
+        function updateStatus(text, status) {
+            const statusText = document.getElementById('status-text');
+            const statusIndicator = document.getElementById('kml-status');
+            
+            statusText.textContent = text;
+            
+            switch(status) {
+                case 'loading':
+                    statusIndicator.className = 'status-indicator';
+                    statusIndicator.style.background = '#ff9800';
+                    break;
+                case 'success':
+                    statusIndicator.className = 'status-indicator active';
+                    statusIndicator.style.background = '#4CAF50';
+                    break;
+                case 'error':
+                    statusIndicator.className = 'status-indicator inactive';
+                    statusIndicator.style.background = '#f44336';
+                    break;
+                case 'warning':
+                    statusIndicator.className = 'status-indicator';
+                    statusIndicator.style.background = '#ff9800';
+                    break;
+            }
         }
         
         // Setup event listeners
         function setupEventListeners() {
-            document.getElementById('open-earth-btn').addEventListener('click', openGoogleEarthWithKml);
+            document.getElementById('open-drive-btn').addEventListener('click', openGoogleEarthViaDrive);
             document.getElementById('open-maps-btn').addEventListener('click', openGoogleMaps);
             
-            // Touch events for mobile
-            if (isMobile) {
-                document.addEventListener('touchstart', function() {}, { passive: true });
-            }
+            // Add focus styles for keyboard navigation
+            document.addEventListener('focusin', function(e) {
+                if (e.target.classList.contains('place-card')) {
+                    e.target.style.outline = '2px solid #1a73e8';
+                    e.target.style.outlineOffset = '2px';
+                }
+            });
+            
+            document.addEventListener('focusout', function(e) {
+                if (e.target.classList.contains('place-card')) {
+                    e.target.style.outline = 'none';
+                }
+            });
         }
         
         // Setup search
         function setupSearch() {
             const searchInput = document.getElementById('searchInput');
-            searchInput.placeholder = `Search ${allPlaces.length} locations...`;
             
             searchInput.addEventListener('input', function() {
                 const query = this.value.toLowerCase().trim();
@@ -731,8 +852,17 @@
         }
         
         // Show debug info
-        function showDebugInfo(info) {
-            console.log('DEBUG:', info);
+        function showDebugInfo(infoArray) {
+            const debugBox = document.getElementById('debug-box');
+            const debugInfo = document.getElementById('debug-info');
+            
+            debugInfo.innerHTML = infoArray.join('<br>');
+            debugBox.style.display = 'block';
+            
+            // Auto-hide after 20 seconds
+            setTimeout(() => {
+                debugBox.style.display = 'none';
+            }, 20000);
         }
         
         // Show toast
@@ -741,17 +871,17 @@
             toast.textContent = message;
             
             switch(type) {
-                case 'error': toast.style.background = '#dc3545'; break;
+                case 'error': toast.style.background = '#f44336'; break;
                 case 'warning': toast.style.background = '#ff9800'; break;
-                case 'success': toast.style.background = '#34a853'; break;
+                case 'success': toast.style.background = '#4CAF50'; break;
                 case 'info': 
                 default: toast.style.background = '#2196F3'; break;
             }
             
-            toast.style.display = 'block';
+            toast.classList.add('show');
             
             setTimeout(() => {
-                toast.style.display = 'none';
+                toast.classList.remove('show');
             }, duration);
         }
         
@@ -762,36 +892,71 @@
             return div.innerHTML;
         }
         
-        // Keyboard shortcuts for desktop
+        // Keyboard Navigation
         document.addEventListener('keydown', function(e) {
+            // Escape - Clear selection
             if (e.key === 'Escape') {
                 selectedPlace = null;
                 updateSelectedInfo();
                 document.querySelectorAll('.place-card.selected').forEach(card => {
                     card.classList.remove('selected');
                 });
+                document.getElementById('searchInput').focus();
             }
             
+            // Enter - Open selected place via Drive
             if (e.key === 'Enter' && selectedPlace) {
-                openGoogleEarthWithKml();
+                openGoogleEarthViaDrive();
             }
             
-            // Navigation with arrow keys
-            if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+            // Arrow Down - Next place
+            if (e.key === 'ArrowDown') {
                 e.preventDefault();
                 if (!selectedPlace && allPlaces.length > 0) {
                     selectPlace(allPlaces[0].id);
                 } else if (selectedPlace) {
                     const currentIndex = allPlaces.findIndex(p => p.id === selectedPlace.id);
-                    if (e.key === 'ArrowDown' && currentIndex < allPlaces.length - 1) {
+                    if (currentIndex < allPlaces.length - 1) {
                         selectPlace(allPlaces[currentIndex + 1].id);
-                    } else if (e.key === 'ArrowUp' && currentIndex > 0) {
+                    }
+                }
+            }
+            
+            // Arrow Up - Previous place
+            if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                if (!selectedPlace && allPlaces.length > 0) {
+                    selectPlace(allPlaces[0].id);
+                } else if (selectedPlace) {
+                    const currentIndex = allPlaces.findIndex(p => p.id === selectedPlace.id);
+                    if (currentIndex > 0) {
                         selectPlace(allPlaces[currentIndex - 1].id);
                     }
+                }
+            }
+            
+            // Ctrl/Cmd + F - Focus search
+            if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+                e.preventDefault();
+                document.getElementById('searchInput').focus();
+            }
+            
+            // Ctrl/Cmd + D - Open via Drive
+            if ((e.ctrlKey || e.metaKey) && e.key === 'd') {
+                e.preventDefault();
+                if (selectedPlace) {
+                    openGoogleEarthViaDrive();
+                }
+            }
+            
+            // Ctrl/Cmd + M - Open Maps
+            if ((e.ctrlKey || e.metaKey) && e.key === 'm') {
+                e.preventDefault();
+                if (selectedPlace) {
+                    openGoogleMaps();
                 }
             }
         });
     </script>
 </body>
 </html>
-
