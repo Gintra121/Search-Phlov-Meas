@@ -124,10 +124,13 @@
             margin: 5px 0;
             font-weight: bold;
             font-size: 14px;
+            transition: all 0.3s;
         }
         
         .action-btn:hover {
             opacity: 0.9;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
         }
         
         .action-btn.earth {
@@ -140,6 +143,10 @@
         
         .action-btn.download {
             background: #ff9800;
+        }
+        
+        .action-btn.earth-direct {
+            background: #9c27b0;
         }
         
         .info-box {
@@ -164,6 +171,30 @@
             margin: 10px 0;
             font-family: monospace;
             font-size: 12px;
+        }
+        
+        .description-details {
+            margin-top: 10px;
+            background: #f8f9fa;
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid #dee2e6;
+        }
+        
+        .description-item {
+            display: grid;
+            grid-template-columns: 100px 1fr;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+        
+        .description-label {
+            font-weight: bold;
+            color: #1a73e8;
+        }
+        
+        .description-value {
+            color: #2c3e50;
         }
         
         .btn-group {
@@ -227,6 +258,12 @@
             word-break: break-all;
             font-family: monospace;
             border: 1px solid #ddd;
+        }
+        
+        .direct-earth-link {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 2px dashed #ccc;
         }
         
         @keyframes spin {
@@ -295,29 +332,56 @@
                         <p>No location selected</p>
                     </div>
                     
-                    <div id="selected-coords" class="hidden">
-                        <div class="coordinate-box">
-                            <div><strong>Latitude:</strong> <span id="coord-lat"></span></div>
-                            <div><strong>Longitude:</strong> <span id="coord-lng"></span></div>
+                    <div id="selected-details" class="hidden">
+                        <div id="description-details" class="description-details">
+                            <!-- Description fields will be inserted here -->
                         </div>
                         
-                        <div class="btn-group">
-                            <button class="action-btn earth" id="open-earth-web-btn">
-                                <i class="fas fa-globe-americas"></i> Earth Web
+                        <div id="selected-coords" class="hidden">
+                            <div class="coordinate-box">
+                                <div><strong>Latitude:</strong> <span id="coord-lat"></span></div>
+                                <div><strong>Longitude:</strong> <span id="coord-lng"></span></div>
+                            </div>
+                            
+                            <div class="btn-group">
+                                <button class="action-btn earth" id="open-earth-web-btn">
+                                    <i class="fas fa-globe-americas"></i> Earth Web
+                                </button>
+                                <button class="action-btn maps" id="open-maps-btn">
+                                    <i class="fas fa-map-marked-alt"></i> Google Maps
+                                </button>
+                            </div>
+                            
+                            <button class="action-btn download" onclick="downloadKML()">
+                                <i class="fas fa-download"></i> Download KML
                             </button>
-                            <button class="action-btn maps" id="open-maps-btn">
-                                <i class="fas fa-map-marked-alt"></i> Google Maps
-                            </button>
+                            
+                            <div class="url-display" id="url-display">
+                                <div style="display: flex; justify-content: space-between; align-items: center;">
+                                    <span id="url-text">URL will appear here</span>
+                                    <button class="copy-btn" onclick="copyURL()">
+                                        <i class="fas fa-copy"></i>
+                                    </button>
+                                </div>
+                            </div>
                         </div>
-                        
-                        <button class="action-btn download" onclick="downloadKML()">
-                            <i class="fas fa-download"></i> Download KML
+                    </div>
+                    
+                    <!-- Direct Earth Web Link -->
+                    <div class="direct-earth-link">
+                        <h4 style="margin-bottom: 10px; color: #9c27b0;">
+                            <i class="fas fa-external-link-alt"></i> Direct Google Earth Web Link
+                        </h4>
+                        <p style="font-size: 14px; margin-bottom: 10px; color: #666;">
+                            Access the complete Google Earth project:
+                        </p>
+                        <button class="action-btn earth-direct" onclick="openDirectEarthWeb()">
+                            <i class="fas fa-external-link-square-alt"></i> Open Google Earth Project
                         </button>
-                        
-                        <div class="url-display" id="url-display">
+                        <div class="url-display" style="margin-top: 10px;">
                             <div style="display: flex; justify-content: space-between; align-items: center;">
-                                <span id="url-text">URL will appear here</span>
-                                <button class="copy-btn" onclick="copyURL()">
+                                <span style="font-size: 11px;">https://earth.google.com/earth/d/1sOxyx1pUjitZAQZG3Cpmb7ZjbE2nkbbF?usp=sharing</span>
+                                <button class="copy-btn" onclick="copyDirectLink()">
                                     <i class="fas fa-copy"></i>
                                 </button>
                             </div>
@@ -353,6 +417,8 @@
     <script>
         // Configuration
         const KML_FILE_NAME = 'ឃុំផ្លូវមាស.kml';
+        const DIRECT_EARTH_URL = 'https://earth.google.com/earth/d/1sOxyx1pUjitZAQZG3Cpmb7ZjbE2nkbbF?usp=sharing';
+        
         let allPlaces = [];
         let selectedPlace = null;
         let originalKMLContent = '';
@@ -407,10 +473,13 @@
                     
                     // Description
                     let description = '';
+                    let formattedDescription = {};
                     const descElement = placemark.getElementsByTagName('description')[0];
                     if (descElement) {
                         description = descElement.textContent.trim();
-                        // Keep HTML for Google Earth display
+                        
+                        // Parse description for key-value pairs (like ឈ្មោះ, ភេទ, etc.)
+                        formattedDescription = parseKMLDescription(description);
                     }
                     
                     // Coordinates
@@ -433,6 +502,7 @@
                         id: i + 1,
                         name: name,
                         description: description,
+                        formattedDescription: formattedDescription,
                         coordinates: coordinates,
                         hasCoordinates: coordinates !== null
                     });
@@ -451,6 +521,56 @@
             }
         }
         
+        // Parse KML description into structured data
+        function parseKMLDescription(description) {
+            const result = {};
+            
+            // Remove HTML tags if present
+            let cleanDesc = description.replace(/<[^>]*>/g, '');
+            
+            // Try to parse common Cambodian field names
+            const fieldPatterns = [
+                { regex: /ឈ្មោះ\s*[:：]\s*([^\n]+)/i, key: 'ឈ្មោះ' },
+                { regex: /ភេទ\s*[:：]\s*([^\n]+)/i, key: 'ភេទ' },
+                { regex: /អាយុ\s*[:：]\s*([^\n]+)/i, key: 'អាយុ' },
+                { regex: /លេខទូរស័ព្ទ\s*[:：]\s*([^\n]+)/i, key: 'លេខទូរស័ព្ទ' },
+                { regex: /អាសយដ្ឋាន\s*[:：]\s*([^\n]+)/i, key: 'អាសយដ្ឋាន' },
+                { regex: /ភូមិ\s*[:：]\s*([^\n]+)/i, key: 'ភូមិ' },
+                { regex: /ឃុំ\s*[:：]\s*([^\n]+)/i, key: 'ឃុំ' },
+                { regex: /ស្រុក\s*[:：]\s*([^\n]+)/i, key: 'ស្រុក' },
+                { regex: /ខេត្ត\s*[:：]\s*([^\n]+)/i, key: 'ខេត្ត' },
+                { regex: /ប្រភេទ\s*[:：]\s*([^\n]+)/i, key: 'ប្រភេទ' },
+                { regex: /ពណ៌នា\s*[:：]\s*([^\n]+)/i, key: 'ពណ៌នា' },
+                // English field names
+                { regex: /name\s*[:：]\s*([^\n]+)/i, key: 'Name' },
+                { regex: /gender\s*[:：]\s*([^\n]+)/i, key: 'Gender' },
+                { regex: /age\s*[:：]\s*([^\n]+)/i, key: 'Age' },
+                { regex: /phone\s*[:：]\s*([^\n]+)/i, key: 'Phone' },
+                { regex: /address\s*[:：]\s*([^\n]+)/i, key: 'Address' },
+                { regex: /village\s*[:：]\s*([^\n]+)/i, key: 'Village' },
+                { regex: /commune\s*[:：]\s*([^\n]+)/i, key: 'Commune' },
+                { regex: /district\s*[:：]\s*([^\n]+)/i, key: 'District' },
+                { regex: /province\s*[:：]\s*([^\n]+)/i, key: 'Province' },
+                { regex: /type\s*[:：]\s*([^\n]+)/i, key: 'Type' },
+                { regex: /description\s*[:：]\s*([^\n]+)/i, key: 'Description' }
+            ];
+            
+            // Try to find matches for each pattern
+            fieldPatterns.forEach(pattern => {
+                const match = cleanDesc.match(pattern.regex);
+                if (match && match[1]) {
+                    result[pattern.key] = match[1].trim();
+                }
+            });
+            
+            // If no structured data found, store the raw description
+            if (Object.keys(result).length === 0 && cleanDesc.trim()) {
+                result['ព័ត៌មាន'] = cleanDesc.trim();
+            }
+            
+            return result;
+        }
+        
         // Render places list
         function renderPlaces(places) {
             const container = document.getElementById('searchResults');
@@ -463,6 +583,7 @@
             let html = '';
             places.forEach(place => {
                 const isSelected = selectedPlace && selectedPlace.id === place.id;
+                const hasDescription = Object.keys(place.formattedDescription).length > 0;
                 
                 html += `
                     <div class="place-card ${isSelected ? 'selected' : ''}" 
@@ -473,12 +594,7 @@
                             <span class="place-id">#${place.id}</span>
                         </div>
                         
-                        ${place.description ? `
-                            <div style="color: #666; margin: 8px 0; font-size: 14px; line-height: 1.4;">
-                                ${escapeHtml(place.description.substring(0, 100))}
-                                ${place.description.length > 100 ? '...' : ''}
-                            </div>
-                        ` : ''}
+                        ${hasDescription ? renderDescriptionPreview(place.formattedDescription) : ''}
                         
                         ${place.hasCoordinates ? `
                             <div style="margin: 8px 0;">
@@ -493,6 +609,25 @@
             });
             
             container.innerHTML = html;
+        }
+        
+        // Render description preview
+        function renderDescriptionPreview(descriptionObj) {
+            let html = '<div style="color: #666; margin: 8px 0; font-size: 14px; line-height: 1.4;">';
+            
+            // Show first 2-3 key-value pairs in preview
+            const keys = Object.keys(descriptionObj);
+            for (let i = 0; i < Math.min(3, keys.length); i++) {
+                const key = keys[i];
+                html += `<div><strong>${key}:</strong> ${escapeHtml(descriptionObj[key].substring(0, 50))}${descriptionObj[key].length > 50 ? '...' : ''}</div>`;
+            }
+            
+            if (keys.length > 3) {
+                html += `<div style="color: #1a73e8; font-size: 12px;"><i class="fas fa-ellipsis-h"></i> ${keys.length - 3} more fields</div>`;
+            }
+            
+            html += '</div>';
+            return html;
         }
         
         // Select a place
@@ -519,11 +654,12 @@
         // Update selected place info
         function updateSelectedInfo() {
             const infoDiv = document.getElementById('selected-info');
+            const detailsDiv = document.getElementById('selected-details');
             const coordsDiv = document.getElementById('selected-coords');
             
             if (!selectedPlace) {
                 infoDiv.innerHTML = '<p>No location selected</p>';
-                coordsDiv.classList.add('hidden');
+                detailsDiv.classList.add('hidden');
                 return;
             }
             
@@ -531,13 +667,38 @@
                 <h4 style="color: #1a73e8; margin-bottom: 5px;">
                     <i class="fas fa-map-marker-alt"></i> ${escapeHtml(selectedPlace.name)}
                 </h4>
-                ${selectedPlace.description ? `
-                    <div style="font-size: 14px; color: #666; margin-top: 5px;">
-                        ${escapeHtml(selectedPlace.description.substring(0, 150))}
-                        ${selectedPlace.description.length > 150 ? '...' : ''}
-                    </div>
-                ` : ''}
             `;
+            
+            // Update description details
+            const descDiv = document.getElementById('description-details');
+            if (Object.keys(selectedPlace.formattedDescription).length > 0) {
+                let descHtml = '<div class="description-details">';
+                
+                for (const [key, value] of Object.entries(selectedPlace.formattedDescription)) {
+                    descHtml += `
+                        <div class="description-item">
+                            <span class="description-label">${escapeHtml(key)}:</span>
+                            <span class="description-value">${escapeHtml(value)}</span>
+                        </div>
+                    `;
+                }
+                
+                descHtml += '</div>';
+                descDiv.innerHTML = descHtml;
+            } else if (selectedPlace.description) {
+                descDiv.innerHTML = `
+                    <div class="description-details">
+                        <div class="description-item">
+                            <span class="description-label">ព័ត៌មាន:</span>
+                            <span class="description-value">${escapeHtml(selectedPlace.description)}</span>
+                        </div>
+                    </div>
+                `;
+            } else {
+                descDiv.innerHTML = '<div class="description-details">No description available</div>';
+            }
+            
+            detailsDiv.classList.remove('hidden');
             
             if (selectedPlace.hasCoordinates) {
                 document.getElementById('coord-lat').textContent = selectedPlace.coordinates.latitude.toFixed(6);
@@ -574,9 +735,6 @@
             // Method 1: Direct Google Earth Web URL with KML parameter
             const earthUrl = generateGoogleEarthWebURL(lat, lng, kmlUrl);
             
-            // Method 2: Alternative approach using data parameter
-            const altEarthUrl = `https://earth.google.com/web/@${lat},${lng},1000a,1000d,35y,0h,0t,0r/data=${encodeURIComponent(kmlUrl)}`;
-            
             // Display the URL
             document.getElementById('url-text').textContent = earthUrl;
             
@@ -587,6 +745,19 @@
             setTimeout(() => {
                 URL.revokeObjectURL(kmlUrl);
             }, 10000);
+        }
+        
+        // Open direct Google Earth Web project
+        function openDirectEarthWeb() {
+            window.open(DIRECT_EARTH_URL, '_blank', 'noopener,noreferrer');
+            showToast('Opening Google Earth project...', 'info');
+        }
+        
+        // Copy direct link
+        function copyDirectLink() {
+            navigator.clipboard.writeText(DIRECT_EARTH_URL).then(() => {
+                showToast('Direct link copied to clipboard!', 'success');
+            });
         }
         
         // Create modified KML with highlighted selected place
@@ -616,7 +787,28 @@
             // Add balloon style for description
             const balloonStyle = xmlDoc.createElement('BalloonStyle');
             const text = xmlDoc.createElement('text');
-            text.textContent = '<![CDATA[<h3>$[name]</h3>$[description]]>';
+            
+            // Create enhanced balloon content with formatted description
+            let balloonContent = '<![CDATA[<h3>$[name]</h3>';
+            
+            if (selectedPlace && Object.keys(selectedPlace.formattedDescription).length > 0) {
+                balloonContent += '<table style="border-collapse: collapse; width: 100%; margin-top: 10px;">';
+                for (const [key, value] of Object.entries(selectedPlace.formattedDescription)) {
+                    balloonContent += `
+                        <tr>
+                            <td style="padding: 4px 8px; border-bottom: 1px solid #eee; font-weight: bold; color: #1a73e8;">${key}</td>
+                            <td style="padding: 4px 8px; border-bottom: 1px solid #eee;">${value}</td>
+                        </tr>
+                    `;
+                }
+                balloonContent += '</table>';
+            } else {
+                balloonContent += '$[description]';
+            }
+            
+            balloonContent += ']]>';
+            
+            text.textContent = balloonContent;
             balloonStyle.appendChild(text);
             style.appendChild(balloonStyle);
             
@@ -661,25 +853,6 @@
             }
             
             return url;
-        }
-        
-        // Alternative: Create network link KML
-        function createNetworkLinkKML() {
-            const networkLinkKML = `<?xml version="1.0" encoding="UTF-8"?>
-<kml xmlns="http://www.opengis.net/kml/2.2">
-  <NetworkLink>
-    <name>${selectedPlace.name}</name>
-    <flyToView>1</flyToView>
-    <Link>
-      <href>${window.location.origin}/${KML_FILE_NAME}</href>
-      <viewRefreshMode>onStop</viewRefreshMode>
-      <viewRefreshTime>1</viewRefreshTime>
-      <viewFormat>BBOX=[bboxWest],[bboxSouth],[bboxEast],[bboxNorth]&amp;CAMERA=[lookatLon],[lookatLat],[lookatRange],[lookatTilt],[lookatHeading]</viewFormat>
-    </Link>
-  </NetworkLink>
-</kml>`;
-            
-            return networkLinkKML;
         }
         
         // Open in Google Maps
@@ -785,8 +958,20 @@
                     }
                     
                     const filtered = allPlaces.filter(place => {
-                        const searchText = (place.name + ' ' + place.description).toLowerCase();
-                        return searchText.includes(query);
+                        // Search in name
+                        if (place.name.toLowerCase().includes(query)) return true;
+                        
+                        // Search in description
+                        if (place.description.toLowerCase().includes(query)) return true;
+                        
+                        // Search in formatted description
+                        for (const [key, value] of Object.entries(place.formattedDescription)) {
+                            if (key.toLowerCase().includes(query) || value.toLowerCase().includes(query)) {
+                                return true;
+                            }
+                        }
+                        
+                        return false;
                     });
                     
                     renderPlaces(filtered);
