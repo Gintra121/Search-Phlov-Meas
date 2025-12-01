@@ -3,8 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>KML to Google Earth via Drive</title>
+    <title>KML to Google Earth via Drive - ឃុំផ្លូវមាស</title>
     <style>
+        /* Your existing CSS styles - keep these */
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -40,20 +41,83 @@
             .main-content { grid-template-columns: 1fr; }
             h1 { font-size: 1.5em; }
         }
-        .search-box {
-            width: 100%;
-            padding: 14px;
-            font-size: 16px;
-            border: 2px solid #1a73e8;
+        
+        /* Authentication Styles */
+        .auth-section {
+            background: #f8f9fa;
+            padding: 20px;
             border-radius: 12px;
-            margin-bottom: 20px;
+            margin: 15px 0;
+            border: 2px solid #d2e3fc;
+            text-align: center;
+        }
+        .google-btn {
+            background: #4285f4;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
             transition: all 0.3s;
         }
-        .search-box:focus {
-            outline: none;
-            border-color: #0d47a1;
-            box-shadow: 0 0 0 3px rgba(26, 115, 232, 0.2);
+        .google-btn:hover {
+            background: #3367d6;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(66, 133, 244, 0.3);
         }
+        .google-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 10px 0;
+        }
+        .user-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            border: 2px solid #1a73e8;
+        }
+        .drive-status {
+            background: #e8f5e9;
+            border: 1px solid #4CAF50;
+            padding: 10px;
+            border-radius: 8px;
+            margin: 10px 0;
+            font-size: 14px;
+        }
+        .drive-status.error {
+            background: #ffebee;
+            border-color: #f44336;
+        }
+        
+        /* Loading Overlay */
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(255, 255, 255, 0.9);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            flex-direction: column;
+        }
+        .loading-overlay.show {
+            display: flex;
+        }
+        
+        /* Place Cards */
         .place-card {
             background: #f8f9fa;
             padding: 18px;
@@ -80,19 +144,42 @@
             font-size: 17px;
             margin-bottom: 8px;
         }
-        .place-description {
-            color: #666;
+        
+        /* Description Styles */
+        .description-content {
+            margin-top: 10px;
+            padding: 15px;
+            background: white;
+            border-radius: 8px;
+            border: 1px solid #e0e0e0;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            display: none;
+        }
+        .description-content.show {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+        .description-item {
+            margin-bottom: 12px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid #eee;
+        }
+        .description-item:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+        }
+        .description-header {
+            font-weight: bold;
+            color: #1a73e8;
+            margin-bottom: 5px;
             font-size: 14px;
-            margin: 8px 0;
-            line-height: 1.5;
-            max-height: 60px;
-            overflow: hidden;
-            transition: max-height 0.3s ease;
         }
-        .place-description.expanded {
-            max-height: 300px;
+        .description-value {
+            color: #555;
+            font-size: 14px;
+            line-height: 1.4;
         }
-        .read-more-btn {
+        .toggle-description {
             color: #1a73e8;
             background: none;
             border: none;
@@ -100,7 +187,10 @@
             font-size: 13px;
             padding: 5px 0;
             display: inline-block;
+            margin-top: 5px;
         }
+        
+        /* Action Buttons */
         .action-btn {
             display: block;
             background: linear-gradient(135deg, #1a73e8, #0d47a1);
@@ -116,23 +206,20 @@
             text-align: center;
             transition: all 0.3s ease;
         }
-        .action-btn:hover {
+        .action-btn:hover:not(:disabled) {
             transform: translateY(-2px);
             box-shadow: 0 6px 20px rgba(26, 115, 232, 0.3);
             opacity: 0.95;
         }
-        .action-btn:active {
-            transform: translateY(0);
+        .action-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
         }
         .action-btn.secondary {
             background: linear-gradient(135deg, #ff9800, #f57c00);
         }
-        .action-btn.success {
-            background: linear-gradient(135deg, #34a853, #2e7d32);
-        }
-        .action-btn.info {
-            background: linear-gradient(135deg, #9c27b0, #7b1fa2);
-        }
+        
+        /* Other Elements */
         .info-box {
             background: #e8f0fe;
             padding: 20px;
@@ -149,6 +236,14 @@
             font-family: 'Courier New', monospace;
             font-size: 14px;
         }
+        .search-box {
+            width: 100%;
+            padding: 14px;
+            font-size: 16px;
+            border: 2px solid #1a73e8;
+            border-radius: 12px;
+            margin-bottom: 20px;
+        }
         .btn-group {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -158,143 +253,69 @@
         @media (max-width: 480px) {
             .btn-group { grid-template-columns: 1fr; }
         }
-        .loading {
-            text-align: center;
-            padding: 50px;
-            color: #666;
-        }
-        .spinner {
-            width: 50px;
-            height: 50px;
-            border: 4px solid #f3f3f3;
-            border-top: 4px solid #1a73e8;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin: 0 auto 25px;
-        }
-        .toast {
-            position: fixed;
-            bottom: 30px;
-            left: 50%;
-            transform: translateX(-50%) translateY(20px);
-            background: #34a853;
-            color: white;
-            padding: 15px 25px;
-            border-radius: 10px;
-            z-index: 1000;
-            display: none;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-            opacity: 0;
-            transition: all 0.3s ease;
-        }
-        .toast.show {
-            display: block;
-            opacity: 1;
-            transform: translateX(-50%) translateY(0);
-        }
-        .hidden { display: none; }
-        .drive-upload-info {
-            background: #fff3cd;
-            border: 2px solid #ffc107;
-            border-radius: 10px;
-            padding: 15px;
-            margin: 15px 0;
-            color: #856404;
-        }
-        .instructions {
-            background: #f8f9fa;
-            border-left: 4px solid #4CAF50;
-            padding: 15px;
-            margin: 15px 0;
-            border-radius: 0 8px 8px 0;
-        }
-        .instructions ol {
-            margin: 10px 0 10px 20px;
-        }
-        .instructions li {
-            margin: 8px 0;
-            line-height: 1.5;
-        }
-        .status-bar {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 10px 15px;
-            background: #f5f5f5;
-            border-radius: 8px;
-            margin: 15px 0;
-            font-size: 14px;
-        }
-        .status-indicator {
-            display: inline-block;
-            width: 12px;
-            height: 12px;
-            border-radius: 50%;
-            margin-right: 8px;
-        }
-        .status-indicator.active {
-            background: #4CAF50;
-        }
-        .status-indicator.inactive {
-            background: #f44336;
-        }
+        
+        /* Animations */
         @keyframes spin {
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
-        @keyframes pulse {
-            0% { opacity: 1; }
-            50% { opacity: 0.7; }
-            100% { opacity: 1; }
-        }
-        .pulse {
-            animation: pulse 2s infinite;
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
         }
     </style>
 </head>
 <body>
     <div class="container">
         <header>
-            <h1>🌍 KML to Google Earth via Google Drive</h1>
-            <p>Upload KML from GitHub to Google Drive & Open with Coordinates</p>
+            <h1>🌍 KML to Google Earth - ឃុំផ្លូវមាស</h1>
+            <p>Automatically upload to Google Drive & open in Google Earth</p>
         </header>
+        
+        <!-- Loading Overlay -->
+        <div class="loading-overlay" id="loadingOverlay">
+            <div style="width: 50px; height: 50px; border: 4px solid #f3f3f3; border-top: 4px solid #1a73e8; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+            <p id="loadingText" style="margin-top: 20px; color: #666;">Loading...</p>
+        </div>
         
         <div class="main-content">
             <!-- Sidebar -->
             <div>
-                <!-- Status Bar -->
-                <div class="status-bar">
-                    <div>
-                        <span class="status-indicator active" id="kml-status"></span>
-                        <span id="status-text">Loading KML...</span>
+                <!-- Authentication Section -->
+                <div class="auth-section" id="authSection">
+                    <div id="userInfo" style="display: none;">
+                        <div class="user-info">
+                            <img id="userAvatar" class="user-avatar" alt="User Avatar">
+                            <div>
+                                <div id="userName" style="font-weight: bold;"></div>
+                                <div id="userEmail" style="font-size: 12px; color: #666;"></div>
+                            </div>
+                        </div>
+                        <button onclick="signOut()" style="background: #f44336; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; margin-top: 10px;">
+                            Sign Out
+                        </button>
                     </div>
-                    <div id="place-count">0 places</div>
+                    <button id="signInButton" class="google-btn" disabled>
+                        <svg width="20" height="20" viewBox="0 0 24 24">
+                            <path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                            <path fill="currentColor" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                            <path fill="currentColor" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                            <path fill="currentColor" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                        </svg>
+                        Sign in with Google
+                    </button>
                 </div>
                 
-                <!-- Instructions -->
-                <div class="instructions">
-                    <h3>📋 How It Works</h3>
-                    <ol>
-                        <li>Select a location from the KML file</li>
-                        <li>Click "Open in Google Earth via Drive"</li>
-                        <li>KML uploads to Google Drive automatically</li>
-                        <li>Google Earth opens with the KML file</li>
-                        <li>Zooms to selected coordinates</li>
-                    </ol>
-                </div>
-                
-                <!-- Drive Upload Info -->
-                <div class="drive-upload-info" id="drive-info">
-                    <strong>⚠️ Important:</strong><br>
-                    Google Earth Web requires KML files to be in Google Drive.<br>
-                    Click the button to upload and open.
+                <!-- Drive Status -->
+                <div class="drive-status" id="driveStatus">
+                    🔒 Sign in to access Google Drive
                 </div>
                 
                 <!-- Selected Location -->
                 <div class="info-box" id="selected-box">
                     <h3>📍 Selected Location</h3>
                     <div id="selected-info">
-                        <p style="color: #666;">Click a location from the list</p>
+                        <p style="color: #666;">Select a location from the list</p>
                     </div>
                     
                     <div id="selected-coords" class="hidden">
@@ -304,159 +325,262 @@
                             <div><strong>Altitude:</strong> <span id="coord-alt">0</span>m</div>
                         </div>
                         
-                        <!-- Main Action Buttons -->
                         <div class="btn-group">
-                            <button class="action-btn pulse" id="open-drive-btn">
-                                ☁️ Open via Google Drive
+                            <button class="action-btn" id="openEarthBtn" disabled>
+                                🌍 Open in Google Earth
                             </button>
-                            <button class="action-btn secondary" id="open-maps-btn">
+                            <button class="action-btn secondary" id="openMapsBtn">
                                 🗺️ Open in Google Maps
-                            </button>
-                        </div>
-                        
-                        <!-- Alternative Actions -->
-                        <div class="btn-group">
-                            <button class="action-btn success" onclick="downloadKML()">
-                                📥 Download KML File
-                            </button>
-                            <button class="action-btn info" onclick="viewRawKML()">
-                                🔗 View Raw KML
-                            </button>
-                        </div>
-                        
-                        <!-- Quick Actions -->
-                        <div style="margin-top: 20px;">
-                            <button class="action-btn" onclick="copyCoordinates()" style="background: #607d8b; padding: 10px;">
-                                📋 Copy Coordinates
                             </button>
                         </div>
                     </div>
                 </div>
                 
-                <!-- Debug Info -->
-                <div class="info-box" id="debug-box" style="display: none;">
-                    <h3>🔍 Debug Information</h3>
-                    <div id="debug-info" style="font-family: monospace; font-size: 12px; margin-top: 10px; line-height: 1.4;"></div>
+                <!-- Instructions -->
+                <div class="info-box">
+                    <h3>📋 How It Works</h3>
+                    <ol>
+                        <li>Sign in with Google (required)</li>
+                        <li>Select a location from the KML</li>
+                        <li>System checks if KML exists in your Drive</li>
+                        <li>If not found, uploads automatically</li>
+                        <li>Opens in Google Earth with coordinates</li>
+                    </ol>
                 </div>
             </div>
             
             <!-- Main Content -->
             <div>
-                <input type="text" id="searchInput" class="search-box" placeholder="🔍 Search locations...">
+                <input type="text" id="searchInput" class="search-box" placeholder="🔍 Search locations..." disabled>
                 
                 <div id="searchResults">
-                    <div class="loading">
-                        <div class="spinner"></div>
-                        <p>Loading KML data from GitHub...</p>
+                    <div class="loading" id="loadingPlaces">
+                        <div style="width: 40px; height: 40px; border: 4px solid #f3f3f3; border-top: 4px solid #1a73e8; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 20px;"></div>
+                        <p>Sign in to load KML data</p>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Toast Notification -->
-    <div class="toast" id="toast"></div>
-
     <script>
-        // Configuration
-        const KML_GITHUB_URL = 'https://raw.githubusercontent.com/Gintra121/Search-Phlov-Meas/main/ឃុំផ្លូវមាស.kml';
-        const KML_LOCAL_FILE = 'ឃុំផ្លូវមាស.kml';
+        // === CONFIGURATION ===
+        // REPLACE THESE WITH YOUR ACTUAL CREDENTIALS
+        const CLIENT_ID = 'AIzaSyAS3pGiy7LRoPC2nAcT3iGBDF8rJHxDZgo'; // Replace with your Client ID
+        const API_KEY = 'YOUR_API_KEY'; // Replace with your API Key
         
-        // Google Drive Upload URL
-        const GOOGLE_DRIVE_UPLOAD_URL = 'https://drive.google.com/drive/u/0/my-drive';
+        // Your KML file URL
+        const KML_GITHUB_URL = 'https://raw.githubusercontent.com/Gintra121/Search-Phlov-Meas/main/%E1%9E%83%E1%9F%86%E1%9E%9F%E1%9F%8B%E1%9E%9A%E1%9E%9B%E1%9E%8F%E1%9E%98%E1%9E%B8%E1%9E%9F%E1%9E%98%E1%9E%B6.kml';
+        const KML_FILENAME = 'ឃុំផ្លូវមាស.kml';
         
+        // Google API Scopes
+        const SCOPES = 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email';
+        
+        // Global variables
         let allPlaces = [];
         let selectedPlace = null;
-        let currentKmlUrl = '';
-        let kmlContent = '';
+        let currentUser = null;
+        let tokenClient = null;
+        let gapiInited = false;
+        let gisInited = false;
         
-        // Initialize
-        document.addEventListener('DOMContentLoaded', async function() {
-            console.log('🚀 Initializing KML to Google Earth via Drive');
-            
-            // Load KML data
-            await loadKMLData();
-            
-            // Setup event listeners
+        // Initialize the application
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('Initializing application...');
+            initializeGoogleApis();
             setupEventListeners();
-            
-            // Setup search
-            setupSearch();
-            
-            // Show welcome message
-            showToast('✅ Ready! Select a location to open in Google Earth via Drive', 'success', 4000);
         });
         
-        // Load KML data
-        async function loadKMLData() {
+        // Initialize Google APIs
+        function initializeGoogleApis() {
+            // Load GAPI client library
+            const gapiScript = document.createElement('script');
+            gapiScript.src = 'https://apis.google.com/js/api.js';
+            gapiScript.onload = function() {
+                gapi.load('client', initializeGapiClient);
+            };
+            document.head.appendChild(gapiScript);
+            
+            // Load GIS (Google Identity Services) library
+            const gisScript = document.createElement('script');
+            gisScript.src = 'https://accounts.google.com/gsi/client';
+            gisScript.onload = initializeGisClient;
+            document.head.appendChild(gisScript);
+        }
+        
+        // Initialize GAPI client
+        async function initializeGapiClient() {
             try {
-                updateStatus('Loading KML from GitHub...', 'loading');
-                
-                // Try GitHub first
-                const response = await fetch(KML_GITHUB_URL);
-                if (response.ok) {
-                    currentKmlUrl = KML_GITHUB_URL;
-                    kmlContent = await response.text();
-                    console.log('✅ Loaded KML from GitHub');
-                } else {
-                    // Fallback to local
-                    const localResponse = await fetch(KML_LOCAL_FILE);
-                    currentKmlUrl = KML_LOCAL_FILE;
-                    kmlContent = await localResponse.text();
-                    console.log('✅ Loaded KML from local file');
-                }
-                
-                // Parse KML
-                parseKML(kmlContent);
-                updateStatus(`${allPlaces.length} locations loaded`, 'success');
-                
+                await gapi.client.init({
+                    apiKey: API_KEY,
+                    discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/drive/v3/rest'],
+                });
+                gapiInited = true;
+                console.log('GAPI client initialized');
+                maybeEnableButtons();
             } catch (error) {
-                console.error('❌ Error loading KML:', error);
-                useFallbackData();
-                updateStatus('Using sample data', 'warning');
-                showToast('⚠️ Using sample data - KML not accessible', 'warning');
+                console.error('Error initializing GAPI:', error);
+                showMessage('Error loading Google APIs', 'error');
             }
         }
         
-        // Parse KML content
+        // Initialize GIS client
+        function initializeGisClient() {
+            tokenClient = google.accounts.oauth2.initTokenClient({
+                client_id: CLIENT_ID,
+                scope: SCOPES,
+                callback: '', // Will be set dynamically
+            });
+            gisInited = true;
+            console.log('GIS client initialized');
+            maybeEnableButtons();
+        }
+        
+        // Enable buttons when both APIs are loaded
+        function maybeEnableButtons() {
+            if (gapiInited && gisInited) {
+                document.getElementById('signInButton').disabled = false;
+                console.log('Google APIs loaded, sign-in button enabled');
+            }
+        }
+        
+        // Setup event listeners
+        function setupEventListeners() {
+            document.getElementById('signInButton').addEventListener('click', handleSignIn);
+            document.getElementById('openEarthBtn').addEventListener('click', handleOpenEarth);
+            document.getElementById('openMapsBtn').addEventListener('click', openGoogleMaps);
+        }
+        
+        // Handle Google Sign In
+        function handleSignIn() {
+            if (!tokenClient) {
+                showMessage('Google APIs not loaded yet', 'error');
+                return;
+            }
+            
+            tokenClient.callback = async (response) => {
+                if (response.error !== undefined) {
+                    console.error('OAuth error:', response);
+                    showMessage('Sign-in failed. Please try again.', 'error');
+                    return;
+                }
+                
+                try {
+                    // Get user info
+                    await fetchUserInfo();
+                    
+                    // Load KML data
+                    await loadKMLData();
+                    
+                    showMessage('Successfully signed in!', 'success');
+                    
+                } catch (error) {
+                    console.error('Error after sign-in:', error);
+                    showMessage('Error loading data after sign-in', 'error');
+                }
+            };
+            
+            tokenClient.requestAccessToken({ prompt: 'consent' });
+        }
+        
+        // Fetch user information
+        async function fetchUserInfo() {
+            try {
+                showLoading('Loading user info...');
+                
+                const token = gapi.client.getToken();
+                if (!token) {
+                    throw new Error('No access token found');
+                }
+                
+                // Get user profile
+                const response = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+                    headers: {
+                        'Authorization': `Bearer ${token.access_token}`
+                    }
+                });
+                
+                if (!response.ok) {
+                    throw new Error('Failed to fetch user info');
+                }
+                
+                const userData = await response.json();
+                currentUser = userData;
+                
+                // Update UI
+                document.getElementById('userInfo').style.display = 'block';
+                document.getElementById('userName').textContent = userData.name || 'Google User';
+                document.getElementById('userEmail').textContent = userData.email || '';
+                if (userData.picture) {
+                    document.getElementById('userAvatar').src = userData.picture;
+                }
+                document.getElementById('signInButton').style.display = 'none';
+                
+                // Enable search
+                document.getElementById('searchInput').disabled = false;
+                
+                // Update drive status
+                document.getElementById('driveStatus').innerHTML = `
+                    ✅ Signed in as: ${userData.email}<br>
+                    📁 Ready to access Google Drive
+                `;
+                document.getElementById('driveStatus').className = 'drive-status';
+                
+                hideLoading();
+                
+            } catch (error) {
+                console.error('Error fetching user info:', error);
+                hideLoading();
+                showMessage('Failed to load user information', 'error');
+            }
+        }
+        
+        // Load KML data from GitHub
+        async function loadKMLData() {
+            try {
+                showLoading('Loading KML data...');
+                
+                // Try to load from GitHub
+                const response = await fetch(KML_GITHUB_URL);
+                if (!response.ok) {
+                    throw new Error('Failed to load KML from GitHub');
+                }
+                
+                const kmlText = await response.text();
+                parseKML(kmlText);
+                
+                hideLoading();
+                showMessage(`Loaded ${allPlaces.length} locations`, 'success');
+                
+            } catch (error) {
+                console.error('Error loading KML:', error);
+                useSampleData();
+                hideLoading();
+                showMessage('Using sample data - KML loading failed', 'warning');
+            }
+        }
+        
+        // Parse KML data with structured descriptions
         function parseKML(kmlText) {
             try {
                 const parser = new DOMParser();
                 const xmlDoc = parser.parseFromString(kmlText, 'text/xml');
-                
-                // Check for errors
-                const parserError = xmlDoc.querySelector('parsererror');
-                if (parserError) throw new Error('Invalid KML format');
-                
-                // Extract placemarks
                 const placemarks = xmlDoc.querySelectorAll('Placemark');
-                console.log(`📊 Found ${placemarks.length} placemarks`);
                 
                 allPlaces = [];
                 
                 placemarks.forEach((placemark, index) => {
-                    // Get name
+                    // Extract name
                     const nameEl = placemark.querySelector('name');
                     const name = nameEl ? nameEl.textContent.trim() : `Location ${index + 1}`;
                     
-                    // Get description
-                    const descEl = placemark.querySelector('description');
-                    let description = '';
-                    if (descEl) {
-                        const descText = descEl.textContent.trim();
-                        // Extract text from HTML if present
-                        const tempDiv = document.createElement('div');
-                        tempDiv.innerHTML = descText;
-                        description = tempDiv.textContent || tempDiv.innerText || '';
-                    }
-                    
-                    // Get coordinates
+                    // Extract coordinates
                     const coordEl = placemark.querySelector('coordinates');
                     let coordinates = null;
                     
                     if (coordEl) {
                         const coordText = coordEl.textContent.trim();
-                        const parts = coordText.split(/\s+/)[0].split(',');
+                        const parts = coordText.split(',');
                         if (parts.length >= 2) {
                             coordinates = {
                                 longitude: parseFloat(parts[0]),
@@ -466,58 +590,132 @@
                         }
                     }
                     
+                    // Extract and parse description
+                    const descEl = placemark.querySelector('description');
+                    const descriptionData = parseDescription(descEl ? descEl.innerHTML : '');
+                    
                     allPlaces.push({
                         id: index + 1,
                         name: name,
-                        description: description,
+                        description: descriptionData,
                         coordinates: coordinates,
                         hasCoordinates: coordinates !== null
                     });
                 });
                 
-                // Render places
                 renderPlaces(allPlaces);
-                document.getElementById('place-count').textContent = `${allPlaces.length} places`;
+                setupSearch();
                 
             } catch (error) {
-                console.error('❌ Error parsing KML:', error);
+                console.error('Error parsing KML:', error);
                 throw error;
             }
         }
         
-        // Fallback data
-        function useFallbackData() {
-            allPlaces = [
-                {
-                    id: 1,
-                    name: "Phnom Penh",
-                    description: "Capital city of Cambodia with rich history and culture",
-                    coordinates: { latitude: 11.5564, longitude: 104.9282, altitude: 20 },
-                    hasCoordinates: true
-                },
-                {
-                    id: 2,
-                    name: "Angkor Wat",
-                    description: "Largest religious monument in the world, built in the 12th century",
-                    coordinates: { latitude: 13.4125, longitude: 103.8660, altitude: 65 },
-                    hasCoordinates: true
-                },
-                {
-                    id: 3,
-                    name: "Siem Reap",
-                    description: "Gateway to Angkor temples and cultural hub",
-                    coordinates: { latitude: 13.3671, longitude: 103.8448, altitude: 18 },
-                    hasCoordinates: true
+        // Parse description into structured data
+        function parseDescription(htmlContent) {
+            try {
+                if (!htmlContent.trim()) return [];
+                
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(htmlContent, 'text/html');
+                const structuredData = [];
+                
+                // Try to find tables first (common in KML descriptions)
+                const tables = doc.querySelectorAll('table');
+                if (tables.length > 0) {
+                    tables.forEach(table => {
+                        const rows = table.querySelectorAll('tr');
+                        rows.forEach(row => {
+                            const cells = row.querySelectorAll('td, th');
+                            if (cells.length >= 2) {
+                                structuredData.push({
+                                    type: 'keyvalue',
+                                    key: cells[0].textContent.trim(),
+                                    value: cells[1].textContent.trim()
+                                });
+                            } else if (cells.length === 1) {
+                                const text = cells[0].textContent.trim();
+                                if (text) {
+                                    structuredData.push({
+                                        type: 'header',
+                                        text: text
+                                    });
+                                }
+                            }
+                        });
+                    });
                 }
-            ];
-            
-            renderPlaces(allPlaces);
-            document.getElementById('place-count').textContent = `${allPlaces.length} places`;
+                
+                // If no tables found, try divs
+                if (structuredData.length === 0) {
+                    const elements = doc.querySelectorAll('div, p, span');
+                    elements.forEach(el => {
+                        const text = el.textContent.trim();
+                        if (text) {
+                            // Check if it looks like a header
+                            const isHeader = el.tagName === 'B' || 
+                                           el.tagName === 'STRONG' ||
+                                           el.style.fontWeight === 'bold' ||
+                                           text.includes(':') ||
+                                           /^[A-Z][^:]*$/.test(text);
+                            
+                            if (isHeader) {
+                                structuredData.push({
+                                    type: 'header',
+                                    text: text.replace(/:/g, '').trim()
+                                });
+                            } else {
+                                // Try to split by colon for key-value pairs
+                                const colonIndex = text.indexOf(':');
+                                if (colonIndex > 0 && colonIndex < 50) {
+                                    structuredData.push({
+                                        type: 'keyvalue',
+                                        key: text.substring(0, colonIndex).trim(),
+                                        value: text.substring(colonIndex + 1).trim()
+                                    });
+                                } else {
+                                    structuredData.push({
+                                        type: 'text',
+                                        text: text
+                                    });
+                                }
+                            }
+                        }
+                    });
+                }
+                
+                // If still no data, use plain text
+                if (structuredData.length === 0) {
+                    const plainText = htmlContent.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+                    if (plainText) {
+                        structuredData.push({
+                            type: 'text',
+                            text: plainText
+                        });
+                    }
+                }
+                
+                return structuredData;
+                
+            } catch (error) {
+                console.error('Error parsing description:', error);
+                const plainText = htmlContent.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+                return plainText ? [{
+                    type: 'text',
+                    text: plainText
+                }] : [];
+            }
         }
         
-        // Render places
+        // Render places with structured descriptions
         function renderPlaces(places) {
             const container = document.getElementById('searchResults');
+            const loadingEl = document.getElementById('loadingPlaces');
+            
+            if (loadingEl) {
+                loadingEl.style.display = 'none';
+            }
             
             if (places.length === 0) {
                 container.innerHTML = '<div class="info-box">No locations found</div>';
@@ -527,25 +725,40 @@
             let html = '';
             places.forEach(place => {
                 const isSelected = selectedPlace && selectedPlace.id === place.id;
-                const shortDesc = place.description.length > 100 ? 
-                    place.description.substring(0, 100) + '...' : place.description;
+                const hasDescription = place.description && place.description.length > 0;
+                
+                // Generate preview text
+                let previewText = '';
+                if (hasDescription) {
+                    const firstItem = place.description[0];
+                    if (firstItem.type === 'keyvalue') {
+                        previewText = `<strong>${escapeHtml(firstItem.key)}:</strong> ${escapeHtml(firstItem.value.substring(0, 80))}${firstItem.value.length > 80 ? '...' : ''}`;
+                    } else if (firstItem.type === 'header') {
+                        previewText = `<strong>${escapeHtml(firstItem.text)}</strong>`;
+                    } else if (firstItem.type === 'text') {
+                        previewText = escapeHtml(firstItem.text.substring(0, 100));
+                        if (firstItem.text.length > 100) previewText += '...';
+                    }
+                }
                 
                 html += `
                     <div class="place-card ${isSelected ? 'selected' : ''}" 
                          onclick="selectPlace(${place.id})"
-                         data-id="${place.id}"
-                         tabindex="0">
+                         data-id="${place.id}">
                         <div class="place-name">${escapeHtml(place.name)}</div>
-                        ${place.description ? `
-                            <div class="place-description" id="desc-${place.id}">
-                                ${escapeHtml(shortDesc)}
+                        
+                        ${previewText ? `
+                            <div style="color: #666; font-size: 14px; margin: 8px 0;">
+                                ${previewText}
                             </div>
-                            ${place.description.length > 100 ? `
-                                <button class="read-more-btn" onclick="toggleDescription(${place.id}, event)">
-                                    Read more
-                                </button>
-                            ` : ''}
+                            <div class="description-content" id="desc-${place.id}">
+                                ${renderStructuredDescription(place.description)}
+                            </div>
+                            <button class="toggle-description" onclick="toggleDescription(${place.id}, event)">
+                                📖 Show Details
+                            </button>
                         ` : ''}
+                        
                         ${place.hasCoordinates ? `
                             <div style="margin-top: 10px;">
                                 <span style="background: #2c3e50; color: white; padding: 4px 10px; border-radius: 5px; font-size: 12px; font-family: monospace;">
@@ -560,53 +773,69 @@
             container.innerHTML = html;
         }
         
-        // Toggle description expansion
+        // Render structured description
+        function renderStructuredDescription(descriptionData) {
+            if (!descriptionData || descriptionData.length === 0) {
+                return '<div style="color: #666; font-style: italic;">No description available</div>';
+            }
+            
+            let html = '';
+            descriptionData.forEach((item, index) => {
+                if (item.type === 'header') {
+                    html += `
+                        <div class="description-item" style="background: #f5f5f5; padding: 10px; border-radius: 5px; margin-bottom: 10px;">
+                            <div class="description-header">${escapeHtml(item.text)}</div>
+                        </div>
+                    `;
+                } else if (item.type === 'keyvalue') {
+                    html += `
+                        <div class="description-item">
+                            <div class="description-header">${escapeHtml(item.key)}</div>
+                            <div class="description-value">${escapeHtml(item.value)}</div>
+                        </div>
+                    `;
+                } else if (item.type === 'text') {
+                    html += `
+                        <div class="description-item">
+                            <div class="description-value">${escapeHtml(item.text)}</div>
+                        </div>
+                    `;
+                }
+            });
+            
+            return html;
+        }
+        
+        // Toggle description visibility
         function toggleDescription(placeId, event) {
             event.stopPropagation();
             const descEl = document.getElementById(`desc-${placeId}`);
             const btn = event.target;
             
-            if (descEl.classList.contains('expanded')) {
-                descEl.classList.remove('expanded');
-                btn.textContent = 'Read more';
-                // Truncate text
-                const place = allPlaces.find(p => p.id === placeId);
-                if (place) {
-                    descEl.textContent = place.description.length > 100 ? 
-                        place.description.substring(0, 100) + '...' : place.description;
-                }
+            if (descEl.classList.contains('show')) {
+                descEl.classList.remove('show');
+                btn.textContent = '📖 Show Details';
             } else {
-                descEl.classList.add('expanded');
-                btn.textContent = 'Read less';
-                // Show full text
-                const place = allPlaces.find(p => p.id === placeId);
-                if (place) {
-                    descEl.textContent = place.description;
-                }
+                descEl.classList.add('show');
+                btn.textContent = '📕 Hide Details';
             }
         }
         
         // Select place
         function selectPlace(placeId) {
-            // Remove previous selection
             document.querySelectorAll('.place-card.selected').forEach(card => {
                 card.classList.remove('selected');
             });
             
-            // Find and select place
             selectedPlace = allPlaces.find(p => p.id === placeId);
             
-            // Update UI
-            updateSelectedInfo();
-            
-            // Add selection visual
-            const card = document.querySelector(`[data-id="${placeId}"]`);
-            if (card) {
-                card.classList.add('selected');
-                card.focus();
+            if (selectedPlace) {
+                const card = document.querySelector(`[data-id="${placeId}"]`);
+                if (card) card.classList.add('selected');
+                
+                updateSelectedInfo();
+                document.getElementById('openEarthBtn').disabled = false;
             }
-            
-            console.log(`📍 Selected: ${selectedPlace.name}`);
         }
         
         // Update selected info
@@ -615,14 +844,16 @@
             const coordsDiv = document.getElementById('selected-coords');
             
             if (!selectedPlace) {
-                infoDiv.innerHTML = '<p style="color: #666;">Click a location from the list</p>';
+                infoDiv.innerHTML = '<p style="color: #666;">Select a location from the list</p>';
                 coordsDiv.classList.add('hidden');
                 return;
             }
             
             infoDiv.innerHTML = `
                 <h4 style="color: #1a73e8; margin-bottom: 10px;">${escapeHtml(selectedPlace.name)}</h4>
-                ${selectedPlace.description ? `<div style="color: #666; font-size: 14px; line-height: 1.5;">${escapeHtml(selectedPlace.description)}</div>` : ''}
+                <div style="max-height: 150px; overflow-y: auto; margin-bottom: 10px;">
+                    ${renderStructuredDescription(selectedPlace.description)}
+                </div>
             `;
             
             if (selectedPlace.hasCoordinates) {
@@ -630,106 +861,152 @@
                 document.getElementById('coord-lng').textContent = selectedPlace.coordinates.longitude.toFixed(6);
                 document.getElementById('coord-alt').textContent = selectedPlace.coordinates.altitude;
                 coordsDiv.classList.remove('hidden');
-            } else {
-                coordsDiv.classList.add('hidden');
             }
         }
         
-        // MAIN FUNCTION: Open Google Earth via Google Drive
-        function openGoogleEarthViaDrive() {
-            if (!selectedPlace || !selectedPlace.hasCoordinates) {
-                showToast('Please select a location first', 'error');
+        // MAIN FUNCTION: Handle opening in Google Earth
+        async function handleOpenEarth() {
+            if (!selectedPlace || !currentUser) {
+                showMessage('Please sign in and select a location', 'error');
                 return;
             }
             
+            try {
+                showLoading('Checking Google Drive...');
+                
+                // 1. Check if KML exists in Drive
+                const existingFile = await checkFileInDrive(KML_FILENAME);
+                let fileId;
+                
+                if (existingFile) {
+                    showMessage('KML found in your Drive', 'success');
+                    fileId = existingFile.id;
+                } else {
+                    // 2. File doesn't exist - download and upload
+                    showMessage('Uploading KML to your Drive...', 'info');
+                    fileId = await uploadKmlToDrive();
+                }
+                
+                // 3. Open file in Google Earth
+                await openFileInEarth(fileId);
+                
+                // 4. Open Google Earth with coordinates
+                openGoogleEarthWithCoordinates();
+                
+                hideLoading();
+                showMessage('Opening in Google Earth...', 'success');
+                
+            } catch (error) {
+                console.error('Error:', error);
+                hideLoading();
+                showMessage('Error: ' + error.message, 'error');
+            }
+        }
+        
+        // Check if file exists in Google Drive
+        async function checkFileInDrive(filename) {
+            try {
+                const response = await gapi.client.drive.files.list({
+                    q: `name='${filename}' and trashed=false`,
+                    fields: 'files(id, name)',
+                    spaces: 'drive'
+                });
+                
+                return response.result.files.length > 0 ? response.result.files[0] : null;
+            } catch (error) {
+                console.error('Error checking Drive:', error);
+                throw new Error('Failed to access Google Drive');
+            }
+        }
+        
+        // Upload KML to Google Drive
+        async function uploadKmlToDrive() {
+            try {
+                // Download KML from GitHub
+                const response = await fetch(KML_GITHUB_URL);
+                const kmlContent = await response.text();
+                
+                // Create metadata
+                const metadata = {
+                    name: KML_FILENAME,
+                    mimeType: 'application/vnd.google-earth.kml+xml'
+                };
+                
+                // Create form data
+                const form = new FormData();
+                form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
+                form.append('file', new Blob([kmlContent], { type: 'application/vnd.google-earth.kml+xml' }));
+                
+                const token = gapi.client.getToken();
+                
+                // Upload to Drive
+                const uploadResponse = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token.access_token}`
+                    },
+                    body: form
+                });
+                
+                if (!uploadResponse.ok) {
+                    throw new Error('Upload failed');
+                }
+                
+                const result = await uploadResponse.json();
+                return result.id;
+                
+            } catch (error) {
+                console.error('Error uploading to Drive:', error);
+                throw new Error('Failed to upload KML to Drive');
+            }
+        }
+        
+        // Open file in Google Earth
+        async function openFileInEarth(fileId) {
+            try {
+                // Update permissions to make it readable by Google Earth
+                await gapi.client.drive.permissions.create({
+                    fileId: fileId,
+                    resource: {
+                        type: 'anyone',
+                        role: 'reader'
+                    }
+                });
+                
+                // Construct Earth URL
+                const earthUrl = `https://earth.google.com/earth/drive?state=%7B"ids"%3A%5B"${fileId}"%5D%2C"action"%3A"open"%7D&usp=drive_web`;
+                
+                // Open in new tab
+                window.open(earthUrl, '_blank');
+                
+                return true;
+            } catch (error) {
+                console.error('Error opening in Earth:', error);
+                throw new Error('Failed to open in Google Earth');
+            }
+        }
+        
+        // Open Google Earth with coordinates
+        function openGoogleEarthWithCoordinates() {
+            if (!selectedPlace || !selectedPlace.hasCoordinates) return;
+            
             const lat = selectedPlace.coordinates.latitude;
             const lng = selectedPlace.coordinates.longitude;
-            const alt = selectedPlace.coordinates.altitude;
             const name = encodeURIComponent(selectedPlace.name);
             
-            console.log(`🌍 Opening ${name} at ${lat}, ${lng}`);
+            // Open Earth with coordinates
+            const earthUrl = `https://earth.google.com/web/search/${name}/@${lat},${lng},${selectedPlace.coordinates.altitude + 1000}a,1000d,35y,0h,0t,0r`;
             
-            // Step 1: Create KML with only the selected place (for faster upload)
-            const singlePlaceKML = createSinglePlaceKML();
-            
-            // Step 2: Upload to Google Drive (simulated)
-            showToast('📤 Preparing KML for Google Drive upload...', 'info');
-            
-            // Step 3: Open Google Drive upload page with KML content
+            // Open in another tab
             setTimeout(() => {
-                openDriveWithKML(singlePlaceKML, lat, lng, name);
-            }, 1000);
-        }
-        
-        // Create KML with only selected place
-        function createSinglePlaceKML() {
-            if (!selectedPlace) return '';
-            
-            const kmlTemplate = `<?xml version="1.0" encoding="UTF-8"?>
-<kml xmlns="http://www.opengis.net/kml/2.2">
-<Document>
-    <name>${selectedPlace.name}</name>
-    <Placemark>
-        <name>${selectedPlace.name}</name>
-        <description><![CDATA[${selectedPlace.description}]]></description>
-        <Point>
-            <coordinates>${selectedPlace.coordinates.longitude},${selectedPlace.coordinates.latitude},${selectedPlace.coordinates.altitude}</coordinates>
-        </Point>
-    </Placemark>
-</Document>
-</kml>`;
-            
-            return kmlTemplate;
-        }
-        
-        // Open Google Drive with KML
-        function openDriveWithKML(kmlContent, lat, lng, name) {
-            // Create blob for download
-            const blob = new Blob([kmlContent], { type: 'application/vnd.google-earth.kml+xml' });
-            const url = URL.createObjectURL(blob);
-            
-            // Create download link
-            const downloadLink = document.createElement('a');
-            downloadLink.href = url;
-            downloadLink.download = `${selectedPlace.name.replace(/\s+/g, '_')}.kml`;
-            
-            // Trigger download
-            document.body.appendChild(downloadLink);
-            downloadLink.click();
-            document.body.removeChild(downloadLink);
-            
-            // Clean up
-            URL.revokeObjectURL(url);
-            
-            // Open Google Drive upload
-            const driveUrl = `${GOOGLE_DRIVE_UPLOAD_URL}?q=${encodeURIComponent('upload .kml')}`;
-            window.open(driveUrl, '_blank');
-            
-            // Also open Google Earth with coordinates
-            setTimeout(() => {
-                const earthUrl = `https://earth.google.com/web/search/${name}/@${lat},${lng},${alt+100}a,1000d,35y,0h,0t,0r`;
                 window.open(earthUrl, '_blank');
-            }, 1500);
-            
-            showToast('📁 KML downloaded. Upload to Google Drive, then open with Google Earth', 'success', 5000);
-            
-            // Show instructions
-            showDebugInfo([
-                '📋 Instructions:',
-                '1. KML file has been downloaded',
-                '2. Google Drive opened for upload',
-                '3. Upload the downloaded KML file',
-                '4. Right-click the file in Drive',
-                '5. Select "Open with" → "Google Earth"',
-                `6. Location: ${lat}, ${lng}`,
-                `7. Altitude: ${alt}m`
-            ]);
+            }, 1000);
         }
         
         // Open Google Maps
         function openGoogleMaps() {
             if (!selectedPlace || !selectedPlace.hasCoordinates) {
-                showToast('Please select a location first', 'error');
+                showMessage('Please select a location first', 'error');
                 return;
             }
             
@@ -739,89 +1016,39 @@
             
             const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${lat},${lng}&query_place_id=${name}`;
             window.open(mapsUrl, '_blank');
-            showToast('Opening in Google Maps...', 'info');
         }
         
-        // Download KML file
-        function downloadKML() {
-            if (!kmlContent) {
-                showToast('KML content not available', 'error');
-                return;
+        // Sign out
+        function signOut() {
+            const token = gapi.client.getToken();
+            if (token) {
+                google.accounts.oauth2.revoke(token.access_token, () => {
+                    console.log('Token revoked');
+                });
+                gapi.client.setToken(null);
             }
             
-            const blob = new Blob([kmlContent], { type: 'application/vnd.google-earth.kml+xml' });
-            const url = URL.createObjectURL(blob);
-            const downloadLink = document.createElement('a');
-            downloadLink.href = url;
-            downloadLink.download = 'locations.kml';
-            document.body.appendChild(downloadLink);
-            downloadLink.click();
-            document.body.removeChild(downloadLink);
-            URL.revokeObjectURL(url);
+            currentUser = null;
+            document.getElementById('userInfo').style.display = 'none';
+            document.getElementById('signInButton').style.display = 'block';
+            document.getElementById('driveStatus').innerHTML = '🔒 Sign in to access Google Drive';
+            document.getElementById('searchInput').disabled = true;
+            document.getElementById('openEarthBtn').disabled = true;
             
-            showToast('KML file downloaded', 'success');
-        }
-        
-        // View raw KML
-        function viewRawKML() {
-            window.open(currentKmlUrl, '_blank');
-        }
-        
-        // Copy coordinates to clipboard
-        function copyCoordinates() {
-            if (!selectedPlace || !selectedPlace.hasCoordinates) return;
+            // Clear places
+            allPlaces = [];
+            selectedPlace = null;
+            document.getElementById('searchResults').innerHTML = `
+                <div class="loading" id="loadingPlaces">
+                    <div style="width: 40px; height: 40px; border: 4px solid #f3f3f3; border-top: 4px solid #1a73e8; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 20px;"></div>
+                    <p>Sign in to load KML data</p>
+                </div>
+            `;
             
-            const coords = `${selectedPlace.coordinates.latitude}, ${selectedPlace.coordinates.longitude}`;
-            navigator.clipboard.writeText(coords).then(() => {
-                showToast('Coordinates copied to clipboard!', 'success');
-            });
-        }
-        
-        // Update status
-        function updateStatus(text, status) {
-            const statusText = document.getElementById('status-text');
-            const statusIndicator = document.getElementById('kml-status');
+            document.getElementById('selected-info').innerHTML = '<p style="color: #666;">Select a location from the list</p>';
+            document.getElementById('selected-coords').classList.add('hidden');
             
-            statusText.textContent = text;
-            
-            switch(status) {
-                case 'loading':
-                    statusIndicator.className = 'status-indicator';
-                    statusIndicator.style.background = '#ff9800';
-                    break;
-                case 'success':
-                    statusIndicator.className = 'status-indicator active';
-                    statusIndicator.style.background = '#4CAF50';
-                    break;
-                case 'error':
-                    statusIndicator.className = 'status-indicator inactive';
-                    statusIndicator.style.background = '#f44336';
-                    break;
-                case 'warning':
-                    statusIndicator.className = 'status-indicator';
-                    statusIndicator.style.background = '#ff9800';
-                    break;
-            }
-        }
-        
-        // Setup event listeners
-        function setupEventListeners() {
-            document.getElementById('open-drive-btn').addEventListener('click', openGoogleEarthViaDrive);
-            document.getElementById('open-maps-btn').addEventListener('click', openGoogleMaps);
-            
-            // Add focus styles for keyboard navigation
-            document.addEventListener('focusin', function(e) {
-                if (e.target.classList.contains('place-card')) {
-                    e.target.style.outline = '2px solid #1a73e8';
-                    e.target.style.outlineOffset = '2px';
-                }
-            });
-            
-            document.addEventListener('focusout', function(e) {
-                if (e.target.classList.contains('place-card')) {
-                    e.target.style.outline = 'none';
-                }
-            });
+            showMessage('Signed out successfully', 'success');
         }
         
         // Setup search
@@ -837,7 +1064,8 @@
                 }
                 
                 const filtered = allPlaces.filter(place => {
-                    const searchText = (place.name + ' ' + place.description).toLowerCase();
+                    const searchText = place.name.toLowerCase() + ' ' + 
+                                     JSON.stringify(place.description).toLowerCase();
                     return searchText.includes(query);
                 });
                 
@@ -847,116 +1075,82 @@
                 if (selectedPlace && !filtered.find(p => p.id === selectedPlace.id)) {
                     selectedPlace = null;
                     updateSelectedInfo();
+                    document.getElementById('openEarthBtn').disabled = true;
                 }
             });
         }
         
-        // Show debug info
-        function showDebugInfo(infoArray) {
-            const debugBox = document.getElementById('debug-box');
-            const debugInfo = document.getElementById('debug-info');
+        // Use sample data if KML loading fails
+        function useSampleData() {
+            allPlaces = [
+                {
+                    id: 1,
+                    name: "ឃុំផ្លូវមាស - Sample 1",
+                    description: [
+                        { type: 'header', text: 'ទីតាំង' },
+                        { type: 'keyvalue', key: 'ខេត្ត', value: 'កំពង់ស្ពឺ' },
+                        { type: 'keyvalue', key: 'ស្រុក', value: 'អណ្ដូងមាស' },
+                        { type: 'keyvalue', key: 'ឃុំ', value: 'ផ្លូវមាស' }
+                    ],
+                    coordinates: { latitude: 11.5564, longitude: 104.9282, altitude: 20 },
+                    hasCoordinates: true
+                },
+                {
+                    id: 2,
+                    name: "ឃុំផ្លូវមាស - Sample 2",
+                    description: [
+                        { type: 'header', text: 'ព័ត៌មានទូទៅ' },
+                        { type: 'keyvalue', key: 'ប្រជាជន', value: '២០,០០០ នាក់' },
+                        { type: 'keyvalue', key: 'ផ្ទៃដី', value: '១៥០ គម២' }
+                    ],
+                    coordinates: { latitude: 11.6000, longitude: 104.9500, altitude: 25 },
+                    hasCoordinates: true
+                }
+            ];
             
-            debugInfo.innerHTML = infoArray.join('<br>');
-            debugBox.style.display = 'block';
-            
-            // Auto-hide after 20 seconds
-            setTimeout(() => {
-                debugBox.style.display = 'none';
-            }, 20000);
+            renderPlaces(allPlaces);
         }
         
-        // Show toast
-        function showToast(message, type = 'info', duration = 3000) {
-            const toast = document.getElementById('toast');
+        // Utility functions
+        function showLoading(text = 'Loading...') {
+            document.getElementById('loadingText').textContent = text;
+            document.getElementById('loadingOverlay').classList.add('show');
+        }
+        
+        function hideLoading() {
+            document.getElementById('loadingOverlay').classList.remove('show');
+        }
+        
+        function showMessage(message, type = 'info') {
+            // Create toast
+            const toast = document.createElement('div');
+            toast.className = 'toast show';
+            toast.style.position = 'fixed';
+            toast.style.bottom = '30px';
+            toast.style.left = '50%';
+            toast.style.transform = 'translateX(-50%) translateY(0)';
+            toast.style.background = type === 'error' ? '#f44336' : 
+                                   type === 'success' ? '#4CAF50' : '#2196F3';
+            toast.style.color = 'white';
+            toast.style.padding = '15px 25px';
+            toast.style.borderRadius = '10px';
+            toast.style.zIndex = '1000';
+            toast.style.boxShadow = '0 10px 30px rgba(0,0,0,0.2)';
             toast.textContent = message;
-            
-            switch(type) {
-                case 'error': toast.style.background = '#f44336'; break;
-                case 'warning': toast.style.background = '#ff9800'; break;
-                case 'success': toast.style.background = '#4CAF50'; break;
-                case 'info': 
-                default: toast.style.background = '#2196F3'; break;
-            }
-            
-            toast.classList.add('show');
+            document.body.appendChild(toast);
             
             setTimeout(() => {
-                toast.classList.remove('show');
-            }, duration);
+                toast.style.opacity = '0';
+                toast.style.transition = 'opacity 0.3s';
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
         }
         
-        // Escape HTML
         function escapeHtml(text) {
             const div = document.createElement('div');
             div.textContent = text;
             return div.innerHTML;
         }
-        
-        // Keyboard Navigation
-        document.addEventListener('keydown', function(e) {
-            // Escape - Clear selection
-            if (e.key === 'Escape') {
-                selectedPlace = null;
-                updateSelectedInfo();
-                document.querySelectorAll('.place-card.selected').forEach(card => {
-                    card.classList.remove('selected');
-                });
-                document.getElementById('searchInput').focus();
-            }
-            
-            // Enter - Open selected place via Drive
-            if (e.key === 'Enter' && selectedPlace) {
-                openGoogleEarthViaDrive();
-            }
-            
-            // Arrow Down - Next place
-            if (e.key === 'ArrowDown') {
-                e.preventDefault();
-                if (!selectedPlace && allPlaces.length > 0) {
-                    selectPlace(allPlaces[0].id);
-                } else if (selectedPlace) {
-                    const currentIndex = allPlaces.findIndex(p => p.id === selectedPlace.id);
-                    if (currentIndex < allPlaces.length - 1) {
-                        selectPlace(allPlaces[currentIndex + 1].id);
-                    }
-                }
-            }
-            
-            // Arrow Up - Previous place
-            if (e.key === 'ArrowUp') {
-                e.preventDefault();
-                if (!selectedPlace && allPlaces.length > 0) {
-                    selectPlace(allPlaces[0].id);
-                } else if (selectedPlace) {
-                    const currentIndex = allPlaces.findIndex(p => p.id === selectedPlace.id);
-                    if (currentIndex > 0) {
-                        selectPlace(allPlaces[currentIndex - 1].id);
-                    }
-                }
-            }
-            
-            // Ctrl/Cmd + F - Focus search
-            if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
-                e.preventDefault();
-                document.getElementById('searchInput').focus();
-            }
-            
-            // Ctrl/Cmd + D - Open via Drive
-            if ((e.ctrlKey || e.metaKey) && e.key === 'd') {
-                e.preventDefault();
-                if (selectedPlace) {
-                    openGoogleEarthViaDrive();
-                }
-            }
-            
-            // Ctrl/Cmd + M - Open Maps
-            if ((e.ctrlKey || e.metaKey) && e.key === 'm') {
-                e.preventDefault();
-                if (selectedPlace) {
-                    openGoogleMaps();
-                }
-            }
-        });
     </script>
 </body>
 </html>
